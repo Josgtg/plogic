@@ -12,10 +12,11 @@ Nystrom, in a functional style rather than the book's OOP.
 Current state: early implementation. The design is complete; the CLI argument parser
 (`src/args.rs`), the token vocabulary (`src/tokens.rs`), the shared error type
 (`src/error.rs`), the scanner (`src/scanner.rs`), the abstract syntax tree with its two
-printers (`src/expression.rs`), the parser (`src/parser.rs`) and the simplifier
-(`src/simplifier.rs`) are implemented, and the rest of the pipeline is still missing.
-Implement against `design/`: the book supplies the algorithms, but the design documents
-win wherever the two differ.
+printers (`src/expression.rs`), the parser (`src/parser.rs`), the simplifier
+(`src/simplifier.rs`) and the interpreter with the truth table (`src/interpreter.rs`,
+`src/truth_table.rs`) are implemented, and the orchestrator and the wired UI are still
+missing. Implement against `design/`: the book supplies the algorithms, but the design
+documents win wherever the two differ.
 
 ## How to help me design
 
@@ -120,6 +121,8 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/expression.rs` | the AST: `Expression`, `ASTPrinter` and `InfixPrinter` |
 | `src/parser.rs` | the parser: tokens to one `Expression` per proposition |
 | `src/simplifier.rs` | the simplifier: canonical rewrites to an equivalent expression |
+| `src/interpreter.rs` | the interpreter: evaluation and truth-table construction |
+| `src/truth_table.rs` | the `TruthTable`, `Row` and `Classification` result types |
 | `src/cli.rs` | the UI/CLI: I/O, presentation, error colors |
 | `src/args.rs` | argument parsing: `Args`, `parse`, `Config` and `UsageError` |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
