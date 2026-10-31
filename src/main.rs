@@ -9,6 +9,8 @@ mod expression;
 #[allow(dead_code)]
 mod interpreter;
 #[allow(dead_code)]
+mod orchestrator;
+#[allow(dead_code)]
 mod parser;
 #[allow(dead_code)]
 mod scanner;
