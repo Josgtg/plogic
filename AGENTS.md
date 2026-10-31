@@ -9,9 +9,10 @@ plogic evaluates propositions of propositional logic and builds truth tables. It
 the algorithms of [Crafting Interpreters](https://craftinginterpreters.com/) by Robert
 Nystrom, in a functional style rather than the book's OOP.
 
-Current state: design phase. The design is complete; the Rust implementation is a stub
-(`src/main.rs`). Implement against `design/`: the book supplies the algorithms, but the
-design documents win wherever the two differ.
+Current state: early implementation. The design is complete; the CLI argument parser
+(`src/cli/`) and the token vocabulary (`src/tokens.rs`) are implemented, and the pipeline
+stages are still missing. Implement against `design/`: the book supplies the algorithms,
+but the design documents win wherever the two differ.
 
 ## How to help me design
 
@@ -102,6 +103,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | Path | Contents |
 | --- | --- |
 | `src/main.rs` | CLI entry point (the only impure code) |
+| `src/tokens.rs` | the token vocabulary: `TokenType`, `Token` and `TokenType::map` |
 | `src/cli/` | the UI/CLI: argument parsing now, presentation later |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |

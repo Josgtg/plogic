@@ -3,9 +3,10 @@
 A propositional logic evaluator: it reads propositions, simplifies them, and builds a
 truth table for each one.
 
-> **Status: design phase.** The language, the pipeline and the CLI are fully designed
-> in [`design/`](design/), but the Rust implementation is still a stub (`src/main.rs`
-> prints `Hello, world!`). Everything below documents the intended behavior.
+> **Status: early implementation.** The language, the pipeline and the CLI are fully
+> designed in [`design/`](design/). The CLI argument parser and the token vocabulary are
+> implemented; the rest of the pipeline is not written yet. Everything below documents
+> the intended behavior.
 
 ## Build and run
 
