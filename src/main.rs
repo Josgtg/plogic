@@ -1,6 +1,10 @@
 mod cli;
-// Temporary: the scanner, the next stage, is the first consumer of the token
-// vocabulary, so nothing reads it in a non-test build yet.
+// Temporary: the pipeline is not wired to the CLI yet, so the core modules are
+// reachable from the tests only. Drop these attributes with the orchestrator.
+#[allow(dead_code)]
+mod error;
+#[allow(dead_code)]
+mod scanner;
 #[allow(dead_code)]
 mod tokens;
 
