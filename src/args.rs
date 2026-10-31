@@ -186,7 +186,7 @@ impl UsageError {
 
 /// Paints text bright red. `colored` decides whether to emit the escapes by
 /// looking at *stdout*, but errors go to stderr, so the caller makes that
-/// decision ([`super::error_colors`]) and it is forced here.
+/// decision ([`crate::cli::error_colors`]) and it is forced here.
 fn bright_red(text: &str) -> String {
     colored::control::set_override(true);
     let painted = text.bright_red().to_string();

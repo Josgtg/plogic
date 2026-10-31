@@ -1,9 +1,8 @@
 //! The command-line interface.
 //!
 //! The only impure component of the design (`design/ui.md`). Everything the
-//! program reads from or writes to the outside world starts here.
-
-pub mod args;
+//! program reads from or writes to the outside world starts here. The parsing
+//! of the arguments lives in [`crate::args`].
 
 use std::io::IsTerminal;
 

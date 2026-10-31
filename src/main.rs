@@ -1,3 +1,4 @@
+mod args;
 mod cli;
 // Temporary: the pipeline is not wired to the CLI yet, so the core modules are
 // reachable from the tests only. Drop these attributes with the orchestrator.
@@ -13,8 +14,6 @@ mod scanner;
 mod tokens;
 
 use std::ffi::OsString;
-
-use cli::args;
 
 fn main() {
     let argv: Vec<OsString> = std::env::args_os().skip(1).collect();

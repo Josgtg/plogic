@@ -10,7 +10,7 @@ the algorithms of [Crafting Interpreters](https://craftinginterpreters.com/) by 
 Nystrom, in a functional style rather than the book's OOP.
 
 Current state: early implementation. The design is complete; the CLI argument parser
-(`src/cli/`), the token vocabulary (`src/tokens.rs`), the shared error type
+(`src/args.rs`), the token vocabulary (`src/tokens.rs`), the shared error type
 (`src/error.rs`), the scanner (`src/scanner.rs`), the abstract syntax tree with its two
 printers (`src/expression.rs`) and the parser (`src/parser.rs`) are implemented, and the
 rest of the pipeline is still missing. Implement against `design/`: the book supplies the
@@ -76,7 +76,7 @@ The runtime stack is deliberately small:
 
 - **clap 4** parses the command line, renders the help screen and handles
   `-h`/`--help` and `-V`/`--version`, through the `derive` feature in
-  `src/cli/args.rs`: each argument's doc comment is its help line,
+  `src/args.rs`: each argument's doc comment is its help line,
   `help_heading` picks the section, and `about`/`override_usage`/`help_template`
   supply the Spanish words (ADR-032); the two informational flags print when
   clap reaches them (ADR-033). plogic still owns the exact Spanish usage-error
@@ -118,7 +118,8 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/scanner.rs` | the scanner: source text to tokens |
 | `src/expression.rs` | the AST: `Expression`, `ASTPrinter` and `InfixPrinter` |
 | `src/parser.rs` | the parser: tokens to one `Expression` per proposition |
-| `src/cli/` | the UI/CLI: argument parsing now, presentation later |
+| `src/cli.rs` | the UI/CLI: I/O, presentation, error colors |
+| `src/args.rs` | argument parsing: `Args`, `parse`, `Config` and `UsageError` |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |
 
