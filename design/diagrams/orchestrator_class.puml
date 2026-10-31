@@ -44,7 +44,8 @@ note bottom of Orchestrator
   TruthTable.with_display: the evaluated expression in
   the label and, when simplification ran, the simplified
   formula in canonical order (InfixPrinter). report() is
-  a pure formatter for the CLI.
+  a pure formatter for the CLI. evaluate() and report()
+  take their source and error by value (ADR-044).
 end note
 
 UI --> Orchestrator

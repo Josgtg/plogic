@@ -20,6 +20,10 @@ its entry points are pure static methods.
 - `Orchestrator.report(error: Error): str` — formats one error (see
   error_handling.md).
 
+Both entry points take their owned argument by value: `evaluate` consumes the
+source text, which the scanner stores anyway (ADR-038), and `report` consumes
+the error, which the UI has already moved out of a list (ADR-044).
+
 Failure is signalled by `Err`: the failing stage's error list. `Ok` always
 carries one table per proposition.
 

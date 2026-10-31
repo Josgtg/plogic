@@ -148,7 +148,9 @@ Property tests over generated expressions:
 - Stage gates: a scan error returns no parse errors; a parse error returns no
   tables; an eval error returns no tables.
 - Mixed error kinds never appear in one `Err` list.
-- Batch order: tables come back in input order, one per proposition.
+- Batch order: tables come back in input order, one per proposition. An
+  empty or whitespace-only source has no propositions, so it returns
+  `Ok([])`.
 - `report`: `línea {line}, columna {col}: {message}` for positioned errors and
   the bare message for `EvalError`.
 

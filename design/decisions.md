@@ -55,6 +55,7 @@ ADR-nnn`.
 | 041 | Parser details: owned tokens, kind predicates and a total cursor | Accepted |
 | 042 | Simplifier details: rule order, chain matching and expansion order | Accepted |
 | 043 | Interpreter and truth-table details: borrowed expression, public fields | Accepted |
+| 044 | Orchestrator arguments are owned | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1146,6 +1147,33 @@ present a table without an accessor layer, and no public operation panics.
 Hand-built empty tables get a harmless, documented class rather than an
 arbitrary one. The two field-visibility decisions are choices of this stage
 and apply to `TruthTable`/`Row` only.
+
+## ADR-044 — Orchestrator arguments are owned
+
+Status: Accepted
+
+Context: `orchestrator.md` gives `evaluate(source: str, simplify: bool,
+table_simplified: bool)` and `report(error: Error): str`, which do not say how
+Rust should pass the two owned values. The scanner takes its source by value
+and stores it in `ScanState` (ADR-038), so borrowing the text in `evaluate`
+would add a copy on every call. The UI prints each error from the list the
+failed stage returned, one at a time.
+
+Decision: Both entry points take their owned argument by value:
+`evaluate(source: String, ...)` consumes the source and `report(error: Error)`
+consumes the error. The UI moves the source it read into `evaluate` and each
+error out of the list into `report`, so neither call copies the payload.
+
+Alternatives: borrow both (`&str`/`&Error`) to match the expressions the other
+stages take — rejected because the scanner immediately needs an owned copy of
+the source and the error list is consumed by the caller anyway; borrow only the
+source; borrow only the error.
+
+Consequences: the signatures are the pseudocode's with Rust types, no call site
+clones its payload, and `report` stays a thin `Display` wrapper. The asymmetry
+with `interpret(&Expression)` and `simplify(&Expression)` is deliberate: those
+stages read a tree the Orchestrator still needs, while the Orchestrator
+consumes text and errors nobody reads again.
 
 ## Errata
 
