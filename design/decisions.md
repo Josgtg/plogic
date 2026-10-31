@@ -52,6 +52,7 @@ ADR-nnn`.
 | 038 | The scanner owns the source; a lone CR is invalid | Accepted |
 | 039 | An underscore continues an identifier but never starts one | Accepted |
 | 040 | AST details: public fields, equality without positions, grouping in the printers | Accepted |
+| 041 | Parser details: owned tokens, kind predicates and a total cursor | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1021,6 +1022,45 @@ Consequences: structural comparisons in the Simplifier are sound; tests can
 compare hand-built trees against parsed ones without reproducing positions;
 `ASTPrinter` is a faithful tree dump; the infix form of `p ∧ (q ∧ r)` loses a
 parenthesis the user wrote, which is harmless because the meaning is the same.
+
+## ADR-041 — Parser details: owned tokens, kind predicates and a total cursor
+
+Status: Accepted
+
+Context: `parser.md` fixes the grammar, the rule results and the recovery
+strategy, and ADR-025 fixes where a failing rule stops. Four implementation
+details were still open. First, `ParseState` carries a token list; the scanner
+owns its source (ADR-038), so the question is whether the parser copies the
+tokens or borrows them. Second, the diagram gives `check`/`match` a
+`TokenType` parameter, but `Identifier` and `Literal` carry payloads, so a
+value to compare against does not exist. Third, whether `parse` consumes the
+final `Eof` and how it behaves if the list has none. Fourth, whether the
+missing-expression report points at the `Eof` just past the end (it does:
+`p &` is `columna 4`).
+
+Decision: `ParseState` owns `Vec<Token>`, so no helper carries a lifetime, and
+`Parser::parse` takes the list by value. `check` and `match` take a predicate
+over `&TokenType` (`matches!(kind, TokenType::Newline)`), which is total over
+the payload variants. `match` returns the matched token and the state after it,
+so the rules never need the book's `previous`. The cursor is total: `peek`
+falls back to an `Eof` token at line 1, column 1 when the list runs out, and
+`is_at_end` is true at `Eof` or past the end, so `parse` cannot read out of
+bounds even if it is handed a hand-built list; a scanner-produced list is
+unchanged because it always ends with `Eof`. `parse` does not consume `Eof`,
+and `proposition` consumes the terminating `Newline`. A blank line is skipped
+by the script loop. Every error is reported at the token under the cursor when
+the rule fails.
+
+Alternatives: borrow the tokens (`&[Token]` and a lifetime through every rule,
+for no gain, since the scanner produces an owned list); compare tokens against
+a sentinel `TokenType` value (invents a literal or an identifier and would
+match the wrong kind); consume `Eof` (then the end of the script is observed
+once and the loop needs a separate flag); panic on a malformed list (the
+scanner's output is always well formed, but errors are values, never panics).
+
+Consequences: the parser is as pure and lifetime-free as the scanner; the
+diagram lists predicate helpers instead of `TokenType` arguments; tests can
+call `parse` with any token list without risking a panic.
 
 ## Errata
 

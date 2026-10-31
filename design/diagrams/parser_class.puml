@@ -45,13 +45,12 @@ class Parser {
   -{static} conjunction(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
   -{static} unary(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
   -{static} primary(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
-  -{static} match(state: ParseState, *types: TokenType): (bool, ParseState)
-  -{static} consume(state: ParseState, type: TokenType, message: str): Result<(Token, ParseState), (Error, ParseState)>
-  -{static} check(state: ParseState, type: TokenType): bool
+  -{static} match(state: ParseState, predicate: KindPredicate): (Token option, ParseState)
+  -{static} consume(state: ParseState, predicate: KindPredicate, message: str): Result<(Token, ParseState), (Error, ParseState)>
+  -{static} check(state: ParseState, predicate: KindPredicate): bool
   -{static} advance(state: ParseState): (Token, ParseState)
   -{static} is_at_end(state: ParseState): bool
   -{static} peek(state: ParseState): Token
-  -{static} previous(state: ParseState): Token
   -{static} error(token: Token, message: str): Error
   -{static} synchronize(state: ParseState): ParseState
 }
@@ -103,6 +102,15 @@ note bottom of Parser
   synchronize starts from there. parse() collects the
   errors into the stage list and returns Err(errors) if
   any, else Ok(expressions).
+
+  ParseState owns the token list, so no helper carries a
+  lifetime. check/match take a predicate over the token
+  kind because Identifier and Literal carry payloads, and
+  match returns the matched token. The cursor is total:
+  past the end peek falls back to Eof, so a malformed list
+  cannot read out of bounds. Eof is never consumed; a
+  proposition consumes its Newline and a blank line is
+  skipped by the loop (ADR-041).
 end note
 
 Orchestrator ..> Parser
