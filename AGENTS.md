@@ -11,10 +11,10 @@ Nystrom, in a functional style rather than the book's OOP.
 
 Current state: early implementation. The design is complete; the CLI argument parser
 (`src/cli/`), the token vocabulary (`src/tokens.rs`), the shared error type
-(`src/error.rs`), the scanner (`src/scanner.rs`) and the abstract syntax tree with its two
-printers (`src/expression.rs`) are implemented, and the rest of the pipeline is still
-missing. Implement against `design/`: the book supplies the algorithms, but the design
-documents win wherever the two differ.
+(`src/error.rs`), the scanner (`src/scanner.rs`), the abstract syntax tree with its two
+printers (`src/expression.rs`) and the parser (`src/parser.rs`) are implemented, and the
+rest of the pipeline is still missing. Implement against `design/`: the book supplies the
+algorithms, but the design documents win wherever the two differ.
 
 ## How to help me design
 
@@ -117,6 +117,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/error.rs` | the shared `Error` enum and its `Display` |
 | `src/scanner.rs` | the scanner: source text to tokens |
 | `src/expression.rs` | the AST: `Expression`, `ASTPrinter` and `InfixPrinter` |
+| `src/parser.rs` | the parser: tokens to one `Expression` per proposition |
 | `src/cli/` | the UI/CLI: argument parsing now, presentation later |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |

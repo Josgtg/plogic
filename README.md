@@ -5,8 +5,8 @@ truth table for each one.
 
 > **Status: early implementation.** The language, the pipeline and the CLI are fully
 > designed in [`design/`](design/). The CLI argument parser, the token vocabulary, the
-> scanner and the syntax tree with its two printers are implemented; the rest of the
-> pipeline is not written yet. Everything below documents the intended behavior.
+> scanner, the parser and the syntax tree with its two printers are implemented; the rest
+> of the pipeline is not written yet. Everything below documents the intended behavior.
 
 ## Build and run
 
