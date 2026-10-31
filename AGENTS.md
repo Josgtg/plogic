@@ -9,13 +9,13 @@ plogic evaluates propositions of propositional logic and builds truth tables. It
 the algorithms of [Crafting Interpreters](https://craftinginterpreters.com/) by Robert
 Nystrom, in a functional style rather than the book's OOP.
 
-Current state: early implementation. The design is complete; the CLI argument parser
-(`src/args.rs`), the token vocabulary (`src/tokens.rs`), the shared error type
-(`src/error.rs`), the scanner (`src/scanner.rs`), the abstract syntax tree with its two
-printers (`src/expression.rs`), the parser (`src/parser.rs`), the simplifier
+Current state: the full pipeline is implemented. The CLI argument parser (`src/args.rs`),
+the token vocabulary (`src/tokens.rs`), the shared error type (`src/error.rs`), the
+scanner (`src/scanner.rs`), the abstract syntax tree with its two printers
+(`src/expression.rs`), the parser (`src/parser.rs`), the simplifier
 (`src/simplifier.rs`), the interpreter with the truth table (`src/interpreter.rs`,
-`src/truth_table.rs`) and the orchestrator (`src/orchestrator.rs`) are implemented; the
-CLI is not wired to the pipeline yet. Implement against `design/`: the book supplies the
+`src/truth_table.rs`), the orchestrator (`src/orchestrator.rs`) and the wired CLI
+(`src/cli.rs`) are all in place. Implement against `design/`: the book supplies the
 algorithms, but the design documents win wherever the two differ.
 
 ## How to help me design

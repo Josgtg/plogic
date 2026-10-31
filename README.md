@@ -3,11 +3,11 @@
 A propositional logic evaluator: it reads propositions, simplifies them, and builds a
 truth table for each one.
 
-> **Status: early implementation.** The language, the pipeline and the CLI are fully
-> designed in [`design/`](design/). The CLI argument parser, the token vocabulary, the
+> **Status: implemented.** The language, the pipeline and the CLI are fully designed in
+> [`design/`](design/) and implemented: the CLI argument parser, the token vocabulary, the
 > scanner, the parser, the syntax tree with its two printers, the simplifier, the
-> interpreter with the truth table and the orchestrator are implemented; the CLI is not
-> wired to the pipeline yet. Everything below documents the intended behavior.
+> interpreter with the truth table, the orchestrator and the wired CLI. Everything below
+> documents the behavior.
 
 ## Build and run
 
