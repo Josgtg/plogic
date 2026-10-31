@@ -41,6 +41,10 @@ Modifiers:
   the original. It is long-only and cannot be combined with `--no-simplificar`.
 - `-s`, `--salida <path>` — write the output to a file instead of the console.
 
+`-h` / `--help` prints a Spanish help message on stdout and exits 0; `-V` /
+`--version` prints exactly `plogic 0.1.0` and exits 0. If either appears as an option
+(before `--`), it wins over the other arguments, and help wins if both appear.
+
 `-s` cannot be combined with `--interactivo`. With no proposition at all (including a
 modifier-only invocation), more than one mode flag, an unknown flag, a missing flag
 value, an extra positional argument, or a single proposition that is empty after
@@ -61,6 +65,7 @@ plogic --proposicion '(p o q) y no r'
 plogic --archivo proposiciones.txt --no-simplificar
 plogic --archivo proposiciones.txt --tabla-simplificada --salida resultados.txt
 plogic --interactivo
+plogic --help
 ```
 
 In interactive mode each line is evaluated on its own and presented immediately; a bad
@@ -130,6 +135,10 @@ Esta proposición es una contingencia.
 - Classification is `tautología` when the result column is all `V`, `contradicción` when
   it is all `F`, `contingencia` otherwise.
 
+In a terminal the `V` and `F` cells of the truth table are colored green and red
+respectively. Nothing else is colored — not the formulas, the label, the classification
+or the errors — and output written to a file is plain text.
+
 Truth tables go to stdout and errors to stderr. Output moves to a file in two cases:
 with `-s`, or automatically to `plogic-output.txt` when any table of a non-interactive
 run has more than 1024 rows (the user is notified on stderr). `-s` wins over the
@@ -158,8 +167,8 @@ A failing stage reports the errors it found; later stages do not run, so a run w
 errors produces no truth tables. An input file with no propositions is an error too
 (`el archivo no contiene proposiciones`).
 
-Exit codes: `0` success, `1` on any failing run (scan, parse, evaluation, an empty input
-file, or an I/O failure), `2` usage error.
+Exit codes: `0` success or help/version, `1` on any failing run (scan, parse,
+evaluation, an empty input file, or an I/O failure), `2` usage error.
 
 ## Design
 
@@ -176,3 +185,18 @@ The implementation follows the pipeline designed in [`design/`](design/):
 The project follows the algorithms of
 [Crafting Interpreters](https://craftinginterpreters.com/) by Robert Nystrom, in a
 functional style: immutable data, errors as values, static entry points.
+
+## Tech stack
+
+- Rust 2024.
+- [`clap`](https://docs.rs/clap) parses the command line. The Spanish help and
+  usage messages, and the usage-error precedence described above, still come from plogic,
+  not from clap.
+- [`thiserror`](https://docs.rs/thiserror) derives `Display` and `Error` for the typed
+  error enum. There is no anyhow: the core returns `Result<T, List<Error>>`, and the
+  CLI handles file I/O failures itself.
+- [`proptest`](https://docs.rs/proptest) generates expressions for the property tests
+  in [`design/testing.md`](design/testing.md).
+- [`colored`](https://docs.rs/colored) colors only the truth-table cells: `V` green
+  and `F` red. Formulas, labels, classification and errors are not colored, and
+  output written to a file is plain text.

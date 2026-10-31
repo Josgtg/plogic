@@ -129,6 +129,10 @@ Property tests over generated expressions:
 ## 6. CLI
 
 - Modes: bare argument, `-p`, `-a`, `-i`.
+- Help and version: `-h` and `--help` print the exact help block from
+  `ui.md` on stdout and exit 0; `-V` and `--version` print `plogic 0.1.0` and
+  exit 0. Either, as an option before `--`, wins over an unknown flag, a missing
+  value and a mode conflict; with both flags present, help wins.
 - Strict usage errors (usage line plus message, exit 2): no argument,
   modifier-only invocation, two mode flags, unknown flag, missing flag value,
   extra positional argument, empty `-p ''` / bare empty string, a single
@@ -148,14 +152,14 @@ Property tests over generated expressions:
   `'-s' no se puede usar con '--interactivo'`, and prints exactly one message.
   A `-p` missing its value wins over the extra positional that follows.
 - Exact strings: a table-driven test asserts the usage line
-  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>]`
+  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]`
   plus each of `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`,
   `solo se puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
   `no se proporcionó ninguna proposición`, and the two conflict messages, with
   exit 2; the read/write messages with exit 1; and the redirect notification
   `la salida se escribió en plogic-output.txt` on stderr.
-- Exit codes: 0 success, 1 on any failing run (scan, parse, evaluation, an
-  empty file, or an I/O failure), 2 usage.
+- Exit codes: 0 on success or help/version, 1 on any failing run (scan, parse,
+  evaluation, an empty file, or an I/O failure), 2 usage.
 - Empty and blank-only files: `el archivo no contiene proposiciones`, exit 1.
 - Output: tables on stdout, errors on stderr; `-s` writes the file and
   leaves stdout empty; a failing run with `-s` writes nothing and leaves an
@@ -201,4 +205,6 @@ Property tests over generated expressions:
 - Column alignment of the printed table (checked by eye on a few tables,
   including a 12-variable one).
 - Terminal rendering of `¬`, `∧`, `∨`, `→`, `↔` on the target consoles; a
-  non-UTF-8 terminal is a known limitation, not a test target.
+  non-UTF-8 terminal is a known limitation, not a test target. Color is a
+  terminal-only presentation detail: `V` green and `F` red in table cells,
+  plain text in files.

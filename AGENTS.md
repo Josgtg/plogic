@@ -59,6 +59,25 @@ These hold for every change; they are decided, not open for reinterpretation:
 - **Rust**: edition 2024. Do not add dependencies without asking. Keep `cargo clippy`
   and `cargo fmt` clean.
 
+## Tech stack
+
+The runtime stack is deliberately small:
+
+- **clap 4** parses the command line. plogic still owns the help text
+  (`design/ui.md`), the exact Spanish usage messages and the fixed precedence in
+  ADR-022/ADR-027/ADR-030; clap's default help and error text are not user-facing.
+- **thiserror 2** derives `Display` and `std::error::Error` for the typed `Error`
+  enum. There is no anyhow: the core keeps `Result<T, List<Error>>`, and file I/O
+  failures stay `std::io::Error` inside the CLI, which renders the Spanish message
+  and exits 1.
+- **proptest 1** is a dev-dependency for the generated-expression tests in
+  `design/testing.md`.
+- **colored 3** colors only the truth-table cells: `V` green and `F` red. The
+  formula text, labels, classification and errors stay uncolored, and the
+  output written to a file is plain text.
+
+Any other dependency needs a decision first.
+
 ## Commands
 
 ```sh

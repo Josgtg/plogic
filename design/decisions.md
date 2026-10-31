@@ -41,6 +41,7 @@ ADR-nnn`.
 | 027 | Fixed precedence for usage errors | Accepted |
 | 028 | `--` is an optional trailing separator | Accepted |
 | 029 | Blank lines separate the presented sections | Accepted |
+| 030 | Help and version flags | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -697,6 +698,32 @@ Consequences: Output is stable for golden tests and matches the README.
 Presentation code emits separators explicitly, including when the simplified
 line is absent.
 
+## ADR-030 — Help and version flags
+
+Status: Accepted
+
+Context: The CLI parser offers `-h`/`--help` and `-V`/`--version` by default,
+but the flag surface in ADR-013 and the exact usage line in ADR-022 did not
+include them. Leaving the defaults on would add undocumented behavior; turning
+them off would remove the help every CLI user expects.
+
+Decision: The CLI supports `-h`/`--help` and `-V`/`--version`. Both write to
+stdout and exit 0. They are not modes and do not combine with a proposition.
+When either appears as an option (before `--`), it is handled before any usage
+validation; if both appear, help wins. `--help` prints the Spanish help block
+defined in `ui.md`; `--version` prints exactly `plogic 0.1.0`, taken from the
+Cargo package name and version. The usage line gains
+`[-h | --help] [-V | --version]`.
+
+Alternatives: disable both and keep the strict surface (no discoverable help);
+help only (no version output); keep the parser's defaults (English text,
+conflicting with ADR-012 and the exact-string rule).
+
+Consequences: `plogic --help --bad` exits 0 instead of reporting an unknown
+flag, and an invalid invocation with `--help` shows help rather than the error.
+Tests assert the exact help and version output and the precedence over usage
+errors.
+
 ## Errata
 
 - ADR-001 lists `Orchestrator.evaluate(source, simplify)`; the signature gained
@@ -734,7 +761,10 @@ line is absent.
   (ADR-021).
 - ADR-012 and ADR-013 list the flags without `--tabla-simplificada`; the flag
   surface was extended by ADR-017, and its conflicts and strict usage rules are
-  in ADR-022.
+  in ADR-022. ADR-030 adds `-h`/`--help` and `-V`/`--version`, whose names stay
+  English; the Spanish-flag rule covers modes, modifiers and output. ADR-022's
+  usage line is now
+  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]`.
 - ADR-013's "bare argument with no flag" means no mode flag; modifiers may
   accompany it. Its `plogic ->` example is superseded by ADR-024: every
   dash-prefixed argument is an option, so that command is an unknown-flag error

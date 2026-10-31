@@ -37,7 +37,8 @@ its variables, rows, size check and result-column label all come from the
 simplified form, and the `Simplificada:` line repeats that label. The
 classification is shown in both cases.
 
-The flag names are Spanish. With no mode and no proposition (a bare
+The mode, modifier and output flag names are Spanish. `--help` and `--version`
+keep their conventional English names. With no mode and no proposition (a bare
 invocation or a modifier-only invocation), more than one mode flag, an unknown
 flag, a missing flag value, an extra positional argument, or a single
 proposition that is empty after trimming, the CLI prints a usage message and
@@ -56,6 +57,33 @@ exists (`plogic -p p --`), while `plogic -p -- p` reports
 trimmed; if nothing remains, the CLI prints `no se proporcionó ninguna
 proposición` and exits 2. Only the emptiness check uses the trimmed value; the
 scanner receives the original text.
+
+## Help and version
+
+`-h` / `--help` prints this help block on stdout and exits 0:
+
+```text
+plogic: evalúa proposiciones de lógica proposicional
+
+uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]
+
+modos:
+  <proposición>               evalúa una proposición
+  -p, --proposicion <texto>   evalúa una proposición
+  -a, --archivo <archivo>     evalúa una proposición por línea
+  -i, --interactivo           inicia una sesión interactiva
+
+opciones:
+  --no-simplificar            no simplifica la proposición
+  --tabla-simplificada        construye la tabla con la expresión simplificada
+  -s, --salida <archivo>      escribe la salida en <archivo>
+  -h, --help                  muestra esta ayuda
+  -V, --version               muestra la versión
+```
+
+`-V` / `--version` prints exactly `plogic 0.1.0` on stdout and exits 0. Neither
+flag is a mode; either one, appearing as an option before `--`, wins over every
+other argument and over any usage error, and help wins if both appear.
 
 ## File mode
 
@@ -95,8 +123,10 @@ Orchestrator stays pure):
 2. the truth table — the variable columns and the result column, aligned,
    with `V` and `F` as values, following the layout in truth_table.md; the
    result column is labelled with the evaluated proposition in normalized
-   form. By default that is the original proposition, keeping the order and
-   grouping the user wrote (redundant parentheses removed); with
+   form. In these cells only, `V` is green and `F` is red when the output is
+   a terminal; the rest of the presentation is uncolored, and output written
+   to a file is plain. By default that is the original proposition, keeping
+   the order and grouping the user wrote (redundant parentheses removed); with
    `--tabla-simplificada` it is the simplified formula in canonical order.
 3. always: a classification line, e.g.
    `Esta proposición es una tautología.`
@@ -132,19 +162,21 @@ associativity requires (see truth_table.md).
 - Formatted errors (via `Orchestrator.report`) go to stderr, one per line;
   truth tables go to stdout.
 - Usage errors print the usage line
-  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>]`
+  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]`
   followed by the specific message, and exit 2. The specific messages are
   `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`, `solo se
   puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
   `'-s' no se puede usar con '--interactivo'`,
   `'--tabla-simplificada' no se puede usar con '--no-simplificar'` and
-  `no se proporcionó ninguna proposición`. When several usage errors apply,
-  the CLI reports one message, the first in this order: unknown flag, missing
-  flag value, more than one mode, extra positional, no proposition,
+  `no se proporcionó ninguna proposición`. Help and version are handled before
+  this list (ADR-030). When several usage errors apply, the CLI reports one
+  message, the first in this order: unknown flag, missing flag value, more than
+  one mode, extra positional, no proposition,
   `--tabla-simplificada` with `--no-simplificar`, `-s` with `--interactivo`
   (ADR-027).
-- Exit codes: 0 on success, 1 on any failing run (scan, parse, evaluation, a
-  file with no propositions, or an I/O failure), 2 for usage errors.
+- Exit codes: 0 on success or on help/version, 1 on any failing run (scan,
+  parse, evaluation, a file with no propositions, or an I/O failure), 2 for
+  usage errors.
 - I/O problems are reported by the CLI directly; they are not part of the
   `Error` model. A read failure prints
   `no se pudo leer el archivo '<path>': <detalle>` and exits 1; an empty
