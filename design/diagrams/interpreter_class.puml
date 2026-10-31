@@ -7,7 +7,7 @@ hide empty members
 class Orchestrator
 
 class Interpreter {
-  +{static} interpret(expression: Expression): Result<TruthTable, List<Error>>
+  +{static} interpret(expression: &Expression): Result<TruthTable, List<Error>>
   -{static} variables(expression: Expression): List<str>
   -{static} assignments(variables: List<str>): List<Map<str, bool>>
   -{static} evaluate(expression: Expression, assignment: Map<str, bool>): bool

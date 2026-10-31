@@ -6,11 +6,12 @@ size limit below.
 
 ## Evaluation
 
-`Interpreter.interpret(expression: Expression): Result<TruthTable, List<Error>>`
+`Interpreter.interpret(expression: &Expression): Result<TruthTable, List<Error>>`
 walks the AST recursively with an environment mapping variable names to truth
 values. The Orchestrator chooses which expression it receives: the original by
 default, or the simplified one with `--tabla-simplificada` (ADR-017). The
-Interpreter itself does not know which one it is evaluating.
+Interpreter itself does not know which one it is evaluating. It takes the tree
+by reference, since it only reads it (ADR-043).
 
 It evaluates each node as follows:
 

@@ -118,7 +118,8 @@ Property tests over generated expressions:
   nothing. A 64-variable expression returns the same error without an
   overflow (the check is `n > 12`, not an unchecked `2^n`).
 - Classification: a tautology, a contradiction and a contingency (for example
-  `p | !p`, `p & !p`, `p`).
+  `p | !p`, `p & !p`, `p`). An empty hand-built table, which `interpret`
+  never produces, is a contingency (ADR-043).
 - `TruthTable.with_display` returns a new table with the label and optional
   simplified text; the table returned by the Interpreter keeps them empty and
   is not modified. A base table without simplified text is valid.

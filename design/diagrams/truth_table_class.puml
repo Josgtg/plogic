@@ -7,18 +7,18 @@ hide empty members
 class Interpreter
 
 class TruthTable {
-  -variables: List<str>
-  -rows: List<Row>
-  -label: str
-  -simplified: str?
+  +variables: List<str>
+  +rows: List<Row>
+  +label: str
+  +simplified: str?
   --
   +with_display(label: str, simplified: str?): TruthTable
   +classify(): Classification
 }
 
 class Row {
-  -values: List<bool>
-  -result: bool
+  +values: List<bool>
+  +result: bool
 }
 
 enum Classification {
@@ -47,7 +47,8 @@ note bottom of TruthTable
   Simplifier ran and uses canonical order; with
   --tabla-simplificada it repeats the label. Both texts
   are produced by InfixPrinter. with_display returns a new
-  table; there are no setters.
+  table; there are no setters, and the fields are public
+  plain data (ADR-043). An empty table is a contingency.
 end note
 
 note bottom of Classification

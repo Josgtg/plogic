@@ -112,22 +112,22 @@ class Simplifier {
 }
 
 class Interpreter {
-  +{static} interpret(expression: Expression): Result<TruthTable, List<Error>>
+  +{static} interpret(expression: &Expression): Result<TruthTable, List<Error>>
 }
 
 class TruthTable {
-  -variables: List<str>
-  -rows: List<Row>
-  -label: str
-  -simplified: str?
+  +variables: List<str>
+  +rows: List<Row>
+  +label: str
+  +simplified: str?
   --
   +with_display(label: str, simplified: str?): TruthTable
   +classify(): Classification
 }
 
 class Row {
-  -values: List<bool>
-  -result: bool
+  +values: List<bool>
+  +result: bool
 }
 
 enum Classification {

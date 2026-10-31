@@ -22,7 +22,9 @@ variables and rows; the Orchestrator adds the display text through
 
 `with_display(label: str, simplified: str?): TruthTable` returns a new table
 with the two display fields set; the Interpreter's table starts with them
-empty. There are no setters (ADR-020).
+empty. There are no setters (ADR-020). The variables, rows, label and
+simplified text are public plain data, like the AST's fields (ADR-043), so the
+UI can read them without accessors.
 
 There is a single display form. It is infix, with the connectives `¬`,
 `∧`, `∨`, `→`, `↔`, the literals `V` and `F`, and parentheses only where
@@ -59,4 +61,6 @@ result column:
 
 The classification is exact: it reads the column, not the simplified
 formula. It is always shown, in every mode and with or without
-simplification (ADR-021).
+simplification (ADR-021). A table always has at least one row, since
+`interpret` builds 2^0 = 1 for a constant; an empty table, constructible only
+by hand, is a contingency (ADR-043).

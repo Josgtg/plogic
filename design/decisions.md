@@ -54,6 +54,7 @@ ADR-nnn`.
 | 040 | AST details: public fields, equality without positions, grouping in the printers | Accepted |
 | 041 | Parser details: owned tokens, kind predicates and a total cursor | Accepted |
 | 042 | Simplifier details: rule order, chain matching and expansion order | Accepted |
+| 043 | Interpreter and truth-table details: borrowed expression, public fields | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1106,6 +1107,45 @@ and every rewrite is a single, testable step. The price is a canonicalization
 per step, which is acceptable because the trees are small, and a weight that
 saturates in contrived inputs, where the program then stops simplifying
 further instead of misbehaving.
+
+## ADR-043 — Interpreter and truth-table details: borrowed expression, public fields
+
+Status: Accepted
+
+Context: `interpreter.md` and `truth_table.md` fix the evaluation, the row
+order, the size limit and the display contract, but leave four implementation
+details open. `interpret(expression: Expression)` shows the tree by value even
+though the Interpreter only reads it and the Orchestrator needs the same tree
+for the result-column label. The `TruthTable` diagram marks the fields private
+(`-variables`, `-rows`, `-label`, `-simplified`, and `Row`'s `-values`,
+`-result`), while the UI lives in another module and must read them. The
+`classify` pseudocode says "all true", "all false", "anything else", which is
+ambiguous for the zero-row table that public fields make constructible even
+though `interpret` always builds at least one row. Finally, an identifier
+lookup has to do something when the name is missing, which the constructed
+environment makes unreachable but the type system does not.
+
+Decision: `Interpreter.interpret` takes `&Expression`, like
+`Simplifier.simplify` (ADR-042), so the Orchestrator keeps one tree for both the
+table and the label without cloning. `TruthTable` and `Row` expose their fields
+as public plain data, as `Expression` does (ADR-040); the only methods stay
+`with_display` and `classify`, and the diagrams mark the fields public. An empty
+table — only constructible by hand — classifies as `Contingency`, so the two
+"all" cases are never vacuously true at once. `evaluate` looks the name up in
+the assignment map and falls back to false instead of indexing, keeping the
+walk total and panic-free even on a malformed tree.
+
+Alternatives: take the expression by value to match the pseudocode literally
+(forces a clone in the Orchestrator); keep the fields private and add a getter
+per field (encapsulation of data that the UI must read wholesale); classify an
+empty table as a tautology by vacuous truth (nonsensical to show a user);
+`unwrap` the lookup (a panic over an impossible input is still a panic).
+
+Consequences: the Interpreter reads the tree without owning it, the UI can
+present a table without an accessor layer, and no public operation panics.
+Hand-built empty tables get a harmless, documented class rather than an
+arbitrary one. The two field-visibility decisions are choices of this stage
+and apply to `TruthTable`/`Row` only.
 
 ## Errata
 
