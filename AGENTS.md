@@ -63,18 +63,26 @@ These hold for every change; they are decided, not open for reinterpretation:
 
 The runtime stack is deliberately small:
 
-- **clap 4** parses the command line. plogic still owns the help text
-  (`design/ui.md`), the exact Spanish usage messages and the fixed precedence in
-  ADR-022/ADR-027/ADR-030; clap's default help and error text are not user-facing.
+- **clap 4** parses the command line, renders the help screen and handles
+  `-h`/`--help` and `-V`/`--version`, through the `derive` feature in
+  `src/cli/args.rs`: each argument's doc comment is its help line,
+  `help_heading` picks the section, and `about`/`override_usage`/`help_template`
+  supply the Spanish words (ADR-032); the two informational flags print when
+  clap reaches them (ADR-033). plogic still owns the exact Spanish usage-error
+  messages and the fixed precedence in ADR-022/ADR-027/ADR-031; a usage error
+  prints its message and then the same help screen (ADR-034), and clap's error
+  text is never user-facing. The version stays at 4.6.4 because `clap_derive`
+  has no 4.6.7 release.
 - **thiserror 2** derives `Display` and `std::error::Error` for the typed `Error`
   enum. There is no anyhow: the core keeps `Result<T, List<Error>>`, and file I/O
   failures stay `std::io::Error` inside the CLI, which renders the Spanish message
   and exits 1.
 - **proptest 1** is a dev-dependency for the generated-expression tests in
   `design/testing.md`.
-- **colored 3** colors only the truth-table cells: `V` green and `F` red. The
-  formula text, labels, classification and errors stay uncolored, and the
-  output written to a file is plain text.
+- **colored 3** colors the truth-table cells (`V` green, `F` red) and the
+  message of an error (bright red, on a terminal only; ADR-035). Formulas,
+  labels, classification, the help screen and the output written to a file stay
+  plain.
 
 Any other dependency needs a decision first.
 
@@ -94,6 +102,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | Path | Contents |
 | --- | --- |
 | `src/main.rs` | CLI entry point (the only impure code) |
+| `src/cli/` | the UI/CLI: argument parsing now, presentation later |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |
 

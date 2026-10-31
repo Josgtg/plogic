@@ -41,15 +41,18 @@ Modifiers:
   the original. It is long-only and cannot be combined with `--no-simplificar`.
 - `-s`, `--salida <path>` — write the output to a file instead of the console.
 
-`-h` / `--help` prints a Spanish help message on stdout and exits 0; `-V` /
-`--version` prints exactly `plogic 0.1.0` and exits 0. If either appears as an option
-(before `--`), it wins over the other arguments, and help wins if both appear.
+`-h` / `--help` prints the help screen on stdout and exits 0: the usage line
+`uso: plogic [opciones] [proposición]` followed by every argument, generated from the
+argument definitions. `-V` / `--version` prints exactly `plogic 0.1.0` and exits 0. The
+parser prints them when it reaches them, so `plogic --help -x` shows the help but
+`plogic -x --help` is an unknown-flag error, and `plogic -- --help` evaluates the
+proposition `--help`.
 
 `-s` cannot be combined with `--interactivo`. With no proposition at all (including a
 modifier-only invocation), more than one mode flag, an unknown flag, a missing flag
 value, an extra positional argument, or a single proposition that is empty after
-trimming, plogic prints a usage message and exits with code 2. The two conflicts above
-are usage errors too.
+trimming, plogic prints the reason followed by the full help screen and exits with code
+2. The two conflicts above are usage errors too.
 
 Every argument that begins with `-` is a flag, except `--`, so `plogic ->` is an
 unknown-flag error. `--` ends flag parsing and is never a flag value: a following argument
@@ -136,8 +139,9 @@ Esta proposición es una contingencia.
   it is all `F`, `contingencia` otherwise.
 
 In a terminal the `V` and `F` cells of the truth table are colored green and red
-respectively. Nothing else is colored — not the formulas, the label, the classification
-or the errors — and output written to a file is plain text.
+respectively, and the message of an error is bright red. Nothing else is colored — not
+the formulas, the label, the classification or the help screen — and output written to a
+file is plain text.
 
 Truth tables go to stdout and errors to stderr. Output moves to a file in two cases:
 with `-s`, or automatically to `plogic-output.txt` when any table of a non-interactive
@@ -189,14 +193,14 @@ functional style: immutable data, errors as values, static entry points.
 ## Tech stack
 
 - Rust 2024.
-- [`clap`](https://docs.rs/clap) parses the command line. The Spanish help and
-  usage messages, and the usage-error precedence described above, still come from plogic,
-  not from clap.
+- [`clap`](https://docs.rs/clap) parses the command line and renders the help screen,
+  using its `derive` feature. plogic supplies the Spanish words and the usage-error
+  messages, and owns the usage-error precedence described above.
 - [`thiserror`](https://docs.rs/thiserror) derives `Display` and `Error` for the typed
   error enum. There is no anyhow: the core returns `Result<T, List<Error>>`, and the
   CLI handles file I/O failures itself.
 - [`proptest`](https://docs.rs/proptest) generates expressions for the property tests
   in [`design/testing.md`](design/testing.md).
-- [`colored`](https://docs.rs/colored) colors only the truth-table cells: `V` green
-  and `F` red. Formulas, labels, classification and errors are not colored, and
-  output written to a file is plain text.
+- [`colored`](https://docs.rs/colored) colors the truth-table cells (`V` green, `F` red)
+  and the message of an error (bright red on a terminal). Formulas, labels,
+  classification, the help screen and output written to a file are not colored.
