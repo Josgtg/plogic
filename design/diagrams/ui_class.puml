@@ -43,6 +43,14 @@ note bottom of UI
   V/F cells of the table are colored (V green, F red);
   the message of an error is bright red on stderr;
   file output is plain.
+
+  The table is left-aligned with two spaces between
+  columns and | before the result column, and no
+  trailing spaces; a table with no variables has no |.
+  File mode numbers its tables ("Proposición n:") and
+  separates them with a blank line; interactive mode
+  separates a table or an error from the next prompt
+  with a blank line (ADR-045).
 end note
 
 CLI ..|> UI

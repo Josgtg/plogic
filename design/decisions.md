@@ -56,6 +56,7 @@ ADR-nnn`.
 | 042 | Simplifier details: rule order, chain matching and expansion order | Accepted |
 | 043 | Interpreter and truth-table details: borrowed expression, public fields | Accepted |
 | 044 | Orchestrator arguments are owned | Accepted |
+| 045 | CLI layout details: free functions, alignment, numbering and separators | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1174,6 +1175,52 @@ clones its payload, and `report` stays a thin `Display` wrapper. The asymmetry
 with `interpret(&Expression)` and `simplify(&Expression)` is deliberate: those
 stages read a tree the Orchestrator still needs, while the Orchestrator
 consumes text and errors nobody reads again.
+
+## ADR-045 — CLI layout details: free functions, alignment, numbering and separators
+
+Status: Accepted
+
+Context: `ui.md` fixes the modes, the flags, the presentation order and the
+redirect rules, but leaves the mechanics of the last stage open in five places
+that the user sees. Whether the CLI is a struct or a set of functions is not a
+design question for the document. The table is "aligned" without saying how
+(a column width, cell padding, separators, trailing spaces). File mode shows
+several tables in sequence without saying how they are separated or numbered.
+Interactive mode says the prompt comes again without saying where the blank
+lines around a table or an error go. End-of-input and `exit` differ in what the
+terminal shows.
+
+Decision: The CLI is a set of free functions — `cli::run(config) -> i32`
+dispatching on `Input`, private helpers for the file, batch and interactive
+paths, and a thin `main` that only translates the exit code. In the table,
+every cell is left-aligned to the width of the widest text of its column,
+header included; columns are separated by two spaces, the result column is
+introduced by `| `, and the last column is not padded, so no line has trailing
+spaces. A table with no variables has no `|` separator: the label is the only
+header and the rows hold the result. File mode numbers the tables it builds:
+each block starts with `Proposición n:` (1-based, counting only built tables,
+so blank lines do not advance the counter), then a blank line, then the normal
+presentation, and blocks are separated by one blank line. Single-proposition
+mode has no heading. In interactive mode, a presentation or an error is
+followed by a blank line before the next prompt; a blank input line adds no
+output of its own. End-of-input prints one newline after the pending `> `,
+while `exit` and `salir` add none. Table cells are painted by temporarily
+overriding `colored`'s terminal detection, since `colored` decides from stdout
+and the cells may be written to stdout while the error color depends on stderr.
+
+Alternatives: a `Cli` struct with methods (more ceremony for state that does
+not outlive one call); right-aligning cells or padding every column (trailing
+spaces and a table that looks ragged in a file); separating file-mode tables
+with a blank line but no heading (the user loses track of which proposition is
+which); numbering in every mode (redundant for one proposition, noisy in the
+REPL); printing a newline on `exit` too (the shell prompt already starts on a
+fresh line).
+
+Consequences: the output is deterministic and diff-stable, file batches are
+self-describing, and the REPL leaves a clean line at Ctrl-D. The layout rules
+live in `ui.md` and are exercised through the binary; the CLI-only decisions
+(no trailing spaces, numbering only in file mode) cost nothing to change later
+because they are presentation, not data.
 
 ## Errata
 

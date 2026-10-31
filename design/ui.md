@@ -108,6 +108,12 @@ the Orchestrator stays pure. A file with no propositions — empty, or only
 blank lines — is not evaluated: the CLI prints `el archivo no contiene
 proposiciones` on stderr and exits with code 1.
 
+A file run presents its tables in input order, numbered: each block starts
+with `Proposición n:` (1-based), then a blank line, then the normal
+presentation, and one blank line separates consecutive blocks. Numbering
+counts only the tables actually built, so blank lines in the file do not
+advance the counter; single-proposition mode has no heading (ADR-045).
+
 ## Output destination
 
 Truth tables go to stdout and errors to stderr. The output is written to a
@@ -151,6 +157,12 @@ printed (item 1); the table and the classification are still printed.
 A blank line separates the printed items: after the simplified line, after
 the table, and before the classification. With `--no-simplificar` only the
 last separator remains, between the table and the classification.
+
+The table is left-aligned: every cell is padded to the width of the widest
+text in its column, header included, with two spaces between columns and
+`| ` before the result column. The last column is not padded, so no line ends
+in spaces. A table with no variables has no `|` separator — the label is the
+only header and each row holds just the result, e.g. `V` over `V` (ADR-045).
 Formulas are shown in infix notation by `InfixPrinter` — a static printer
 alongside `ASTPrinter` — and always in the one normalized form: `¬`, `∧`,
 `∨`, `→`, `↔`, `V` / `F`, parentheses only where precedence or
@@ -167,8 +179,11 @@ associativity requires (see truth_table.md).
 - An error on one line prints its formatted errors and the session
   continues — a bad proposition does not end the session.
 - A blank or whitespace-only line evaluates nothing and just shows a new
-  prompt; an empty session is not an error.
-- `exit`, `salir`, or end-of-input (Ctrl-D) ends the session.
+  prompt; an empty session is not an error. A presentation or an error is
+  followed by a blank line before the next prompt (ADR-045).
+- `exit`, `salir`, or end-of-input (Ctrl-D) ends the session. End-of-input
+  prints one newline after the pending `> `; the two words add none, since
+  the user already pressed Enter (ADR-045).
 - Interactive output always goes to the console; the automatic
   `plogic-output.txt` redirect never applies.
 

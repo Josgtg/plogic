@@ -213,6 +213,13 @@ Property tests over generated expressions:
 - Presentation: `present` separates the simplified line, the table and the
   classification with blank lines; with `--no-simplificar` only the blank line
   between the table and the classification remains (ADR-029).
+- Table layout: cells are left-aligned to the widest text of their column
+  (header included), columns are separated by two spaces, `| ` introduces the
+  result column and the last column is unpadded, so no line has trailing
+  spaces; a table with no variables has no `|` separator (ADR-045).
+- File mode numbering: each block starts with `Proposición n:` and a blank
+  line, blocks are separated by one blank line, the counter counts only built
+  tables, and single-proposition mode has no heading (ADR-045).
 - `--tabla-simplificada` combines with `-s`; `--no-simplificar` omits only the
   `Simplificada:` line, never the classification.
 - I/O failures: an unreadable input prints
@@ -221,7 +228,10 @@ Property tests over generated expressions:
   1.
 - Interactive: a blank or whitespace-only line shows a prompt again, `exit`,
   `salir` and Ctrl-D all end the session, an error does not end it. Both
-  modifiers apply to every line; using them together is a usage error.
+  modifiers apply to every line; using them together is a usage error. A
+  presentation or an error is followed by a blank line before the next prompt;
+  Ctrl-D prints one newline after the pending prompt, while `exit`/`salir` add
+  none (ADR-045).
 
 ## 7. Product examples
 
