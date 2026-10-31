@@ -1,0 +1,193 @@
+@startuml class_diagram
+title plogic - Class diagram (functional design)
+
+skinparam classAttributeIconSize 0
+skinparam nodesep 15
+skinparam ranksep 30
+hide empty members
+
+interface UI {
+  +receive_file(path: str)
+  +receive_proposition(proposition: str)
+  +start_interactive()
+  +present(table: TruthTable)
+}
+
+class CLI
+
+class Orchestrator {
+  +{static} evaluate(source: str, simplify: bool, table_simplified: bool): Result<List<TruthTable>, List<Error>>
+  +{static} report(error: Error): str
+}
+
+enum TokenType {
+  Not
+  And
+  Or
+  Implication
+  Biconditional
+  Literal(bool)
+  Identifier(str)
+  LeftParen
+  RightParen
+  Newline
+  Eof
+  --
+  +{static} map(lexeme: str): Result<TokenType, str>
+}
+
+class Token {
+  -type: TokenType
+  -line: int
+  -col: int
+  --
+  +to_string(): str
+}
+
+class ScanState {
+  -source: str
+  -token_start: int
+  -current: int
+  -line: int
+  -tokens: List<Token>
+  -errors: List<Error>
+}
+
+class Scanner {
+  +{static} scan(source: str): Result<List<Token>, List<Error>>
+}
+
+abstract class Expression
+
+class Binary {
+  -left: Expression
+  -right: Expression
+  -operator: Token
+}
+
+class Unary {
+  -operator: Token
+  -expression: Expression
+}
+
+class Grouping {
+  -expression: Expression
+}
+
+class Literal {
+  -value: bool
+}
+
+class Identifier {
+  -name: str
+}
+
+class ASTPrinter {
+  +{static} print(expression: Expression): str
+}
+
+class InfixPrinter {
+  +{static} print(expression: Expression): str
+}
+
+class ParseState {
+  -tokens: List<Token>
+  -current: int
+}
+
+class Parser {
+  +{static} parse(tokens: List<Token>): Result<List<Expression>, List<Error>>
+}
+
+enum Error {
+  ScanError(line: int, col: int, message: str)
+  ParseError(line: int, col: int, message: str)
+  EvalError(message: str)
+}
+
+class Simplifier {
+  +{static} simplify(expression: Expression): Expression
+}
+
+class Interpreter {
+  +{static} interpret(expression: Expression): Result<TruthTable, List<Error>>
+}
+
+class TruthTable {
+  -variables: List<str>
+  -rows: List<Row>
+  -label: str
+  -simplified: str?
+  --
+  +with_display(label: str, simplified: str?): TruthTable
+  +classify(): Classification
+}
+
+class Row {
+  -values: List<bool>
+  -result: bool
+}
+
+enum Classification {
+  Tautology
+  Contradiction
+  Contingency
+}
+
+CLI ..|> UI
+CLI --> Orchestrator
+
+Orchestrator ..> Scanner : <<use>>
+Orchestrator ..> Parser : <<use>>
+Orchestrator ..> Simplifier : <<use>>
+Orchestrator ..> Interpreter : <<use>>
+Orchestrator ..> TruthTable : with_display
+Orchestrator ..> InfixPrinter : <<use>>
+Orchestrator ..> Error : <<use>>
+
+Scanner ..> ScanState : <<use>>
+Parser ..> ParseState : <<use>>
+
+ScanState --> Token : tokens
+ScanState --> Error : errors
+ParseState --> Token : tokens
+Token --> TokenType : type
+
+Parser ..> Expression : <<create>>
+Parser ..> Error : <<create>>
+Scanner ..> Error : <<create>>
+Interpreter ..> Error : <<create>>
+
+Binary --|> Expression
+Unary --|> Expression
+Grouping --|> Expression
+Literal --|> Expression
+Identifier --|> Expression
+
+Binary --> Expression : left
+Binary --> Expression : right
+Binary --> Token : operator
+Unary --> Expression : expression
+Unary --> Token : operator
+Grouping --> Expression : expression
+
+ASTPrinter ..> Expression : <<use>>
+InfixPrinter ..> Expression : <<use>>
+Simplifier ..> Expression : <<use>>
+Interpreter ..> Expression : <<use>>
+
+Interpreter ..> TruthTable : <<create>>
+TruthTable --> Row : rows
+TruthTable --> Classification : classify
+UI ..> TruthTable : <<use>>
+
+legend right
+  Every stage is a static entry point over immutable
+  values: no stage is constructed and nothing is mutated.
+  ScanState and ParseState are threaded and returned anew.
+  Fallible stage entry points return Err(List<Error>);
+  Simplifier.simplify is total. A gate keeps each
+  list to errors of exactly one stage.
+end legend
+
+@enduml

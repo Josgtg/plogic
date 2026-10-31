@@ -1,0 +1,87 @@
+@startuml scanner_class
+title plogic - Scanner stage
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Orchestrator
+
+enum TokenType {
+  Not
+  And
+  Or
+  Implication
+  Biconditional
+  Literal(bool)
+  Identifier(str)
+  LeftParen
+  RightParen
+  Newline
+  Eof
+  --
+  +{static} map(lexeme: str): Result<TokenType, str>
+}
+
+class Token {
+  -type: TokenType
+  -line: int
+  -col: int
+  --
+  +to_string(): str
+}
+
+class ScanState {
+  -source: str
+  -token_start: int
+  -current: int
+  -line: int
+  -tokens: List<Token>
+  -errors: List<Error>
+}
+
+class Scanner {
+  +{static} scan(source: str): Result<List<Token>, List<Error>>
+  -{static} scan_token(state: ScanState): ScanState
+  -{static} match(state: ScanState, expected: char): (bool, ScanState)
+  -{static} peek(state: ScanState): char
+  -{static} peek_next(state: ScanState): char
+  -{static} is_at_end(state: ScanState): bool
+  -{static} advance(state: ScanState): (char, ScanState)
+  -{static} add_token(state: ScanState, type: TokenType): ScanState
+}
+
+enum Error {
+  ScanError(line: int, col: int, message: str)
+  ParseError(line: int, col: int, message: str)
+  EvalError(message: str)
+}
+
+note bottom of Scanner
+  Pure and never constructed: the immutable ScanState
+  is threaded through every helper and returned anew.
+
+  Character handling:
+  - spaces and tabs separate lexemes;
+  - LF or CRLF emits Newline and advances line;
+  - ! ¬ & ∧ | ∨ → ↔ are single-character lexemes;
+  - -> and <-> are the only multi-character ones;
+  - digit runs map to Literal(false) / Literal(true),
+    any other run is a ScanError;
+  - ASCII letter runs are words: reserved spellings
+    map to their kind, anything else is Identifier.
+
+  line and col are 1-based; col counts characters from
+  the last line break, including a tab as one, and is
+  derived, not stored. Errors are collected and the
+  partial token list is discarded: Err(errors) or
+  Ok(tokens).
+end note
+
+Orchestrator ..> Scanner
+
+Scanner ..> ScanState : <<use>>
+ScanState --> Token : tokens
+ScanState --> Error : errors
+Token --> TokenType : type
+
+@enduml

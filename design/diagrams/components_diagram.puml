@@ -1,0 +1,70 @@
+@startuml components_diagram
+title plogic - Components diagram
+
+component "UI" as UI
+component "Orchestrator" as Orchestrator
+component "Scanner" as Scanner
+component "Parser" as Parser
+component "Simplifier" as Simplifier
+component "Interpreter" as Interpreter
+
+note top of UI
+  The only impure component: reads the command line,
+  files and terminal, and presents one truth table
+  per proposition with its classification.
+end note
+
+note bottom of Scanner
+  Tokenizes the source. Newline is a real token:
+  it terminates a proposition.
+end note
+
+note bottom of Parser
+  Builds the syntax tree (AST): one expression per
+  proposition (batch parse), synchronizing to the
+  next line after a parse error.
+end note
+
+note bottom of Simplifier
+  Optional: skipped with --no-simplificar. Erases
+  grouping first, then applies the laws as oriented
+  rewrites to a fixed point. Weight never increases and
+  strictly decreases whenever a rewrite applies.
+end note
+
+note bottom of Interpreter
+  Evaluates the expression it receives (the original by
+  default, the simplified one with --tabla-simplificada)
+  and builds the truth table. A table of more than 4096
+  rows is refused before enumeration.
+end note
+
+UI -down-> Orchestrator : 1. source text
+Orchestrator -up-> UI #2E7D32 : 10. truth tables
+
+Orchestrator -down-> Scanner : 2. source
+Scanner -up-> Orchestrator #2E7D32 : 3. tokens
+
+Orchestrator -down-> Parser : 4. tokens
+Parser -up-> Orchestrator #2E7D32 : 5. expressions
+
+note bottom of Orchestrator
+  Steps 6-9 repeat once per parsed proposition;
+  steps 1-5 and 10 happen once per run.
+  Step 8 chooses the original expression by default,
+  or the simplified one with --tabla-simplificada.
+  A failing stage returns Err on the same arrow and
+  the run stops: no truth tables are produced.
+end note
+
+Orchestrator -down-> Simplifier : 6. expression
+Simplifier -up-> Orchestrator #2E7D32 : 7. simplified expression
+
+Orchestrator -down-> Interpreter : 8. expression to tabulate
+Interpreter -up-> Orchestrator #2E7D32 : 9. truth table
+
+Scanner -[hidden]right- Parser
+Parser -[hidden]right- Simplifier
+Simplifier -[hidden]right- Interpreter
+
+@enduml

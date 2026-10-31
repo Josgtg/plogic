@@ -1,0 +1,78 @@
+@startuml interpreter_class
+title plogic - Interpreter stage
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Orchestrator
+
+class Interpreter {
+  +{static} interpret(expression: Expression): Result<TruthTable, List<Error>>
+  -{static} variables(expression: Expression): List<str>
+  -{static} assignments(variables: List<str>): List<Map<str, bool>>
+  -{static} evaluate(expression: Expression, assignment: Map<str, bool>): bool
+}
+
+abstract class Expression
+
+class Binary
+
+class Unary
+
+class Grouping
+
+class Literal
+
+class Identifier
+
+class TruthTable
+
+class Row
+
+enum Classification {
+  Tautology
+  Contradiction
+  Contingency
+}
+
+enum Error {
+  ScanError(line: int, col: int, message: str)
+  ParseError(line: int, col: int, message: str)
+  EvalError(message: str)
+}
+
+note bottom of Interpreter
+  Pure and never constructed. Evaluates the expression
+  it receives; the Orchestrator chooses the original by
+  default or the simplified one with
+  --tabla-simplificada, and the Interpreter does not
+  know which one it is evaluating.
+
+  1. Collect the distinct variables of the received
+     expression in order of first appearance.
+  2. Enumerate all 2^n assignments in binary counting
+     order: the last variable varies fastest.
+  3. Evaluate the expression under each assignment.
+
+  The table starts without display text; the
+  Orchestrator adds it through TruthTable.with_display.
+  A table of more than 4096 rows (13 or more variables
+  of the received expression) is refused before
+  enumeration with Err([EvalError(...)]).
+end note
+
+Orchestrator ..> Interpreter : <<use>>
+Interpreter ..> Expression : <<use>>
+Interpreter ..> TruthTable : <<create>>
+Interpreter ..> Error : <<create>>
+
+TruthTable --> Row : rows
+TruthTable --> Classification : classify
+
+Binary --|> Expression
+Unary --|> Expression
+Grouping --|> Expression
+Literal --|> Expression
+Identifier --|> Expression
+
+@enduml

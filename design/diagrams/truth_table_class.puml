@@ -1,0 +1,68 @@
+@startuml truth_table_class
+title plogic - TruthTable
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Interpreter
+
+class TruthTable {
+  -variables: List<str>
+  -rows: List<Row>
+  -label: str
+  -simplified: str?
+  --
+  +with_display(label: str, simplified: str?): TruthTable
+  +classify(): Classification
+}
+
+class Row {
+  -values: List<bool>
+  -result: bool
+}
+
+enum Classification {
+  Tautology
+  Contradiction
+  Contingency
+}
+
+class InfixPrinter
+
+class Orchestrator
+
+interface UI
+
+note bottom of TruthTable
+  One column per distinct variable of the evaluated
+  expression (the original by default, the simplified one
+  with --tabla-simplificada), in order of first
+  appearance; one row per assignment (2^n), in binary
+  counting order with the last variable varying fastest.
+
+  The result column is labelled with the evaluated
+  expression in normalized form: the operand order the
+  user wrote for the original, canonical order for the
+  simplified formula. simplified is present only when the
+  Simplifier ran and uses canonical order; with
+  --tabla-simplificada it repeats the label. Both texts
+  are produced by InfixPrinter. with_display returns a new
+  table; there are no setters.
+end note
+
+note bottom of Classification
+  Tautology: the result column is all V.
+  Contradiction: the result column is all F.
+  Contingency: anything else.
+  Classification reads the column, not the simplified
+  formula, so it stays exact. It is always shown.
+end note
+
+Interpreter ..> TruthTable : <<create>>
+TruthTable --> Row : rows
+TruthTable --> Classification : classify
+Orchestrator ..> TruthTable : with_display
+Orchestrator ..> InfixPrinter : <<use>>
+UI ..> TruthTable : <<use>>
+
+@enduml

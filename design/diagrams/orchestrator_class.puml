@@ -1,0 +1,68 @@
+@startuml orchestrator_class
+title plogic - Orchestrator stage
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+interface UI {
+}
+
+class Orchestrator {
+  +{static} evaluate(source: str, simplify: bool, table_simplified: bool): Result<List<TruthTable>, List<Error>>
+  +{static} report(error: Error): str
+}
+
+class Token
+
+class Scanner
+class Parser
+class ScanState
+class ParseState
+class Simplifier
+class Interpreter
+class TruthTable
+class InfixPrinter
+abstract class Expression
+enum Error
+
+note bottom of Orchestrator
+  Stateless: pure composition of the pipeline
+  scan -> parse -> per proposition (simplify ->
+  choose expression -> interpret). Failure is always
+  signalled by Result, with Err = List<Error>.
+
+  Stage gates: a scan failure stops before parsing,
+  a parse failure stops before simplification, and
+  an EvalError stops the whole run. Steps 6-9 repeat
+  once per parsed proposition.
+
+  Step 8 tabulates the original expression by default,
+  or the simplified one with --tabla-simplificada.
+  With simplify = false, table_simplified is ignored
+  and the original is tabulated (ADR-026).
+  evaluate() adds each table's display text through
+  TruthTable.with_display: the evaluated expression in
+  the label and, when simplification ran, the simplified
+  formula in canonical order (InfixPrinter). report() is
+  a pure formatter for the CLI.
+end note
+
+UI --> Orchestrator
+
+Orchestrator ..> Scanner : <<use>>
+Orchestrator ..> Parser : <<use>>
+Orchestrator ..> Simplifier : <<use>>
+Orchestrator ..> Interpreter : <<use>>
+Orchestrator ..> TruthTable : with_display
+Orchestrator ..> InfixPrinter : <<use>>
+Orchestrator ..> Expression : <<use>>
+Orchestrator ..> Error : <<use>>
+
+Scanner ..> ScanState
+Parser ..> ParseState
+ScanState --> Token
+ParseState --> Token
+Interpreter ..> TruthTable : <<create>>
+UI ..> TruthTable : <<use>>
+
+@enduml

@@ -1,0 +1,123 @@
+@startuml parser_class
+title plogic - Parser stage
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Orchestrator
+
+enum TokenType {
+  Not
+  And
+  Or
+  Implication
+  Biconditional
+  Literal(bool)
+  Identifier(str)
+  LeftParen
+  RightParen
+  Newline
+  Eof
+  --
+  +{static} map(lexeme: str): Result<TokenType, str>
+}
+
+class Token {
+  -type: TokenType
+  -line: int
+  -col: int
+  --
+  +to_string(): str
+}
+
+class ParseState {
+  -tokens: List<Token>
+  -current: int
+}
+
+class Parser {
+  +{static} parse(tokens: List<Token>): Result<List<Expression>, List<Error>>
+  -{static} proposition(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} expression(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} biconditional(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} implication(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} disjunction(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} conjunction(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} unary(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} primary(state: ParseState): Result<(Expression, ParseState), (Error, ParseState)>
+  -{static} match(state: ParseState, *types: TokenType): (bool, ParseState)
+  -{static} consume(state: ParseState, type: TokenType, message: str): Result<(Token, ParseState), (Error, ParseState)>
+  -{static} check(state: ParseState, type: TokenType): bool
+  -{static} advance(state: ParseState): (Token, ParseState)
+  -{static} is_at_end(state: ParseState): bool
+  -{static} peek(state: ParseState): Token
+  -{static} previous(state: ParseState): Token
+  -{static} error(token: Token, message: str): Error
+  -{static} synchronize(state: ParseState): ParseState
+}
+
+enum Error {
+  ScanError(line: int, col: int, message: str)
+  ParseError(line: int, col: int, message: str)
+  EvalError(message: str)
+}
+
+abstract class Expression
+
+class Binary
+
+class Unary
+
+class Grouping
+
+class Literal
+
+class Identifier
+
+note bottom of Parser
+  Pure and never constructed. One method per
+  precedence level (Crafting Interpreters, ch. 6);
+  the immutable ParseState is threaded through every
+  rule and returned as a new value.
+
+  Grammar:
+  script         -> proposition* ;
+  proposition    -> expression ( Newline | Eof ) ;
+  expression     -> biconditional ;
+  biconditional  -> implication ( Biconditional implication )* ;
+  implication    -> disjunction ( Implication implication )? ;
+  disjunction    -> conjunction ( Or conjunction )* ;
+  conjunction    -> unary ( And unary )* ;
+  unary          -> Not unary | primary ;
+  primary        -> Literal | Identifier | "(" expression ")" ;
+
+  Implication is right-associative (recursion);
+  every other binary level is left-associative (loop).
+
+  parse() is the book's statement loop: one
+  proposition per iteration. On a parse error it
+  records a ParseError, synchronizes to after the next
+  Newline (or Eof) and keeps parsing. Each rule returns
+  Result<(Expression, ParseState), (Error, ParseState)>;
+  the failure carries the state at the failing token, and
+  synchronize starts from there. parse() collects the
+  errors into the stage list and returns Err(errors) if
+  any, else Ok(expressions).
+end note
+
+Orchestrator ..> Parser
+
+Parser ..> ParseState : <<use>>
+ParseState --> Token : tokens
+Token --> TokenType : type
+
+Parser ..> Expression : <<create>>
+Parser ..> Error : <<create>>
+
+Binary --|> Expression
+Unary --|> Expression
+Grouping --|> Expression
+Literal --|> Expression
+Identifier --|> Expression
+
+@enduml

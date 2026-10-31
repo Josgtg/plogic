@@ -1,0 +1,96 @@
+@startuml expression_class
+title plogic - AST and printers
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Parser
+
+class Token
+
+abstract class Expression
+
+note bottom of Expression
+  Pure data: a method-free, closed hierarchy.
+  Stages traverse it with pattern matching; there is
+  no Visitor pattern and no per-node behaviour
+  (ADR-001).
+end note
+
+class Binary {
+  -left: Expression
+  -right: Expression
+  -operator: Token
+}
+
+class Unary {
+  -operator: Token
+  -expression: Expression
+}
+
+class Grouping {
+  -expression: Expression
+}
+
+class Literal {
+  -value: bool
+}
+
+class Identifier {
+  -name: str
+}
+
+class ASTPrinter {
+  +{static} print(expression: Expression): str
+  -{static} print_binary(expression: Binary): str
+  -{static} print_unary(expression: Unary): str
+  -{static} print_grouping(expression: Grouping): str
+  -{static} print_literal(expression: Literal): str
+  -{static} print_identifier(expression: Identifier): str
+  -{static} parenthesize(name: str, expressions: List<Expression>): str
+}
+
+class InfixPrinter {
+  +{static} print(expression: Expression): str
+  -{static} print_binary(expression: Binary): str
+  -{static} print_unary(expression: Unary): str
+  -{static} print_grouping(expression: Grouping): str
+  -{static} print_literal(expression: Literal): str
+  -{static} print_identifier(expression: Identifier): str
+  -{static} precedence(expression: Expression): int
+}
+
+note bottom of ASTPrinter
+  Parenthesized prefix (Polish) notation, used for
+  verification: (∧ (¬ p) q). Its parentheses never
+  depend on precedence.
+end note
+
+note bottom of InfixPrinter
+  Normalized infix form for the user: ¬ ∧ ∨ → ↔,
+  V / F, and parentheses where precedence or
+  associativity requires. In particular the left child
+  of -> at equal precedence is parenthesized:
+  (p → q) → r, while p → q → r means p → (q → r).
+  The only user-facing printer.
+end note
+
+Parser ..> Expression : <<create>>
+
+Binary --|> Expression
+Unary --|> Expression
+Grouping --|> Expression
+Literal --|> Expression
+Identifier --|> Expression
+
+Binary --> Expression : left
+Binary --> Expression : right
+Binary --> Token : operator
+Unary --> Expression : expression
+Unary --> Token : operator
+Grouping --> Expression : expression
+
+ASTPrinter ..> Expression : <<use>>
+InfixPrinter ..> Expression : <<use>>
+
+@enduml

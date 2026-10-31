@@ -1,0 +1,51 @@
+@startuml ui_class
+title plogic - UI / CLI
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+interface UI {
+  +receive_file(path: str)
+  +receive_proposition(proposition: str)
+  +start_interactive()
+  +present(table: TruthTable)
+}
+
+class CLI
+
+class Orchestrator
+
+class TruthTable
+
+note bottom of CLI
+  The only impure component. It parses the command
+  line (-p, -a, -i, -s, -h, -V and their long
+  forms in ui.md), reads and writes files and prints.
+  Help/version win over other arguments and exit 0.
+  Dash-prefixed arguments are options; -- ends
+  option parsing. Usage errors exit with code 2;
+  I/O problems are reported directly and are outside
+  the Error model (ADR-014), with exit code 1.
+end note
+
+note bottom of UI
+  present() prints, in order: the simplified formula
+  (when simplification ran), the aligned truth table,
+  and always the classification line, with a blank line
+  between items. With --tabla-simplificada the table
+  label is the simplified formula and the first line
+  repeats it. Interactive sessions never redirect; every
+  non-interactive run may redirect to plogic-output.txt
+  when a table exceeds 1024 rows. In a terminal, only the
+  V/F cells of the table are colored (V green, F red);
+  file output is plain.
+end note
+
+CLI ..|> UI
+CLI --> Orchestrator
+
+Orchestrator ..> TruthTable : with_display
+
+UI ..> TruthTable : <<use>>
+
+@enduml

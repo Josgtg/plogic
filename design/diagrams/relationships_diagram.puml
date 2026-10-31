@@ -1,0 +1,83 @@
+@startuml relationships_diagram
+title plogic - Relationships diagram
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+interface UI
+
+class CLI
+
+class Orchestrator
+enum TokenType
+class Token
+
+class Scanner
+
+class Parser
+enum Error
+class ScanState
+class ParseState
+class Simplifier
+class Interpreter
+class TruthTable
+class Row
+enum Classification
+
+abstract class Expression
+class Binary
+class Unary
+class Grouping
+class Literal
+class Identifier
+class ASTPrinter
+class InfixPrinter
+
+CLI ..|> UI
+CLI --> Orchestrator
+
+Orchestrator ..> Scanner : <<use>>
+Orchestrator ..> Parser : <<use>>
+Orchestrator ..> Simplifier : <<use>>
+Orchestrator ..> Interpreter : <<use>>
+Orchestrator ..> TruthTable : with_display
+Orchestrator ..> InfixPrinter : <<use>>
+Orchestrator ..> Error : <<use>>
+
+Scanner ..> ScanState
+Parser ..> ParseState
+
+ScanState --> Token : tokens
+ScanState --> Error : errors
+ParseState --> Token : tokens
+Token --> TokenType : type
+
+Parser ..> Expression : <<create>>
+Parser ..> Error : <<create>>
+Scanner ..> Error : <<create>>
+Interpreter ..> Error : <<create>>
+
+Binary --|> Expression
+Unary --|> Expression
+Grouping --|> Expression
+Literal --|> Expression
+Identifier --|> Expression
+
+Binary --> Expression : left
+Binary --> Expression : right
+Binary --> Token : operator
+Unary --> Expression : expression
+Unary --> Token : operator
+Grouping --> Expression : expression
+
+ASTPrinter ..> Expression : <<use>>
+InfixPrinter ..> Expression : <<use>>
+Simplifier ..> Expression : <<use>>
+Interpreter ..> Expression : <<use>>
+
+Interpreter ..> TruthTable : <<create>>
+TruthTable --> Row : rows
+TruthTable --> Classification : classify
+UI ..> TruthTable : <<use>>
+
+@enduml

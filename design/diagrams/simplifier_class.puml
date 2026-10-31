@@ -1,0 +1,76 @@
+@startuml simplifier_class
+title plogic - Simplifier stage
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Orchestrator
+
+class Simplifier {
+  +{static} simplify(expression: Expression): Expression
+  -{static} erase_grouping(expression: Expression): Expression
+  -{static} reduce(expression: Expression): Expression
+  -{static} canonicalize(expression: Expression): Expression
+  -{static} expand(expression: Expression): Expression
+  -{static} weight(expression: Expression): int
+  -{static} compare(left: Expression, right: Expression): int
+}
+
+abstract class Expression
+
+class Binary
+
+class Unary
+
+class Grouping
+
+class Literal
+
+class Identifier
+
+note bottom of Simplifier
+  Pure and total: Expression in, Expression out, no
+  errors. Never constructed.
+
+  Four parts:
+  0. erase grouping: every Grouping is stripped first;
+     the rest never sees it and the output has none.
+  1. canonicalize: flatten & / | chains and sort the
+     operands in the canonical order (total and
+     structural); the AST keeps binary nodes.
+  2. reduce: oriented local rewrites, bottom-up, to a
+     fixed point; every rule strictly lowers the
+     weight W.
+  3. expand: laws 4a/4b are tried one at a time and
+     kept only if W(candidate) < W(best).
+
+  Conditional and biconditional are eliminated, so
+  the output contains only ¬, ∧ and ∨. The result is
+  equivalent; no particular normal form is promised.
+end note
+
+note right of Expression
+  Canonical order, by kind:
+  1. constant (F before V)
+  2. variable (ASCII code-point, case-sensitive;
+     P before p, p before p1)
+  3. !x
+  4. & chain
+  5. | chain
+  6. ->, 7. <->
+  This order is internal to the Simplifier and shows
+  in the simplified formula. The original label keeps
+  the written order; with --tabla-simplificada the
+  label is the simplified formula and is canonical too.
+end note
+
+Orchestrator ..> Simplifier : <<use>>
+Simplifier ..> Expression : <<use>>
+
+Binary --|> Expression
+Unary --|> Expression
+Grouping --|> Expression
+Literal --|> Expression
+Identifier --|> Expression
+
+@enduml
