@@ -42,6 +42,11 @@ ADR-nnn`.
 | 028 | `--` is an optional trailing separator | Accepted |
 | 029 | Blank lines separate the presented sections | Accepted |
 | 030 | Help and version flags | Accepted |
+| 031 | Repeated flags reuse the existing usage messages | Accepted |
+| 032 | Compact usage line and generated help screen | Accepted |
+| 033 | The parser handles help and version, in argument order | Accepted |
+| 034 | Usage errors print the message and the full help screen | Accepted |
+| 035 | Errors are bright red on a terminal | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -724,6 +729,141 @@ flag, and an invalid invocation with `--help` shows help rather than the error.
 Tests assert the exact help and version output and the precedence over usage
 errors.
 
+## ADR-031 — Repeated flags reuse the existing usage messages
+
+Status: Accepted
+
+Context: ADR-022 and ADR-027 give every usage error one message and one place
+in the precedence, but neither says what a flag passed twice does
+(`plogic -p p -p q`, `-i -i`, `-s a -s b`). The command-line parser rejects a
+repeated flag as a conflict, so the outcome has to be defined rather than
+inherited.
+
+Decision: A repeated flag is a usage error with exit code 2 and no new
+strings. Repeating a mode flag (`-p`, `-a`, `-i`) reports
+`solo se puede usar un modo a la vez`; repeating `-s`, `--no-simplificar` or
+`--tabla-simplificada` reports `argumento inesperado: '<flag>'`, with the flag
+as the user typed it. Each repetition takes the place of the message it reuses
+in the ADR-027 order: a repeated mode flag counts as more than one mode, and
+any other repetition counts as an extra positional argument.
+
+Alternatives: a new message such as `'<flag>' no se puede usar más de una vez`
+(clearer, but adds a string plus its precedence and its tests); letting the
+last occurrence win (permissive, contradicts ADR-022).
+
+Consequences: The strict CLI keeps one message per case and one documented
+order. A repeated mode flag is indistinguishable from two different modes,
+which is acceptable because both mean the same thing: more than one mode.
+
+## ADR-032 — Compact usage line and generated help screen
+
+Status: Accepted
+
+Context: ADR-022 fixed a usage line that enumerated every mode and modifier,
+and ADR-030 documented a hand-written help block. Both repeated the argument
+definitions: adding or renaming a flag meant editing several documents, and the
+enumerated line was long enough to wrap on a normal terminal. The command-line
+parser already knows the arguments and can render them.
+
+Decision: The usage line is the compact
+`uso: plogic [opciones] [proposición]`. The help screen is generated from the
+argument definitions, one line per argument, grouped in `argumentos:` (the
+positional) and `opciones:` (everything else, the help and version flags last).
+Its fixed words stay Spanish and every description is lower-case, like the
+error messages. Error messages remain plogic's own exact Spanish strings with
+the ADR-022/ADR-027/ADR-031 rules; the parser's error text is never shown.
+
+Alternatives: keep the enumerated usage line (long, and repeated in every
+document); adopt the parser's English help and error text (breaks ADR-012);
+keep the hand-written help block (a second list to keep in sync).
+
+Consequences: A new argument appears in the help as soon as it is declared, and
+the usage line fits on one line. ADR-022's usage string is replaced by the
+compact one; the rest of ADR-022, and ADR-027/ADR-031, still hold. ADR-030's
+help block and its precedence rule are superseded by ADR-032 and ADR-033.
+
+## ADR-033 — The parser handles help and version, in argument order
+
+Status: Accepted
+
+Context: ADR-030 made plogic scan the arguments itself so that `-h`/`--help`
+and `-V`/`--version` win over every other argument and every usage error, and
+then print a hand-written help block. ADR-032 moved the help screen to the
+command-line parser, which also knows the two flags and can print them: it
+does so when it reaches them, in the order they appear. Keeping ADR-030's
+precedence therefore means a second pass over the tokens just to pre-empt an
+error the parser has not raised yet.
+
+Decision: `-h`/`--help` and `-V`/`--version` are the parser's. It prints them
+to stdout and exits 0, and it does so when it reaches them: an error raised by
+an earlier argument wins, so `plogic -x --help` and `plogic -p --help` are
+usage errors (exit 2), while `plogic --help -x`, `plogic -hV` and
+`plogic --help --version` print the help. `plogic -V --help` prints the
+version. `--` still ends option parsing, so `plogic -- --help` evaluates the
+proposition `--help`. The parsing entry point returns the validated run only;
+the informational flags never reach the caller.
+
+Alternatives: keep the pre-scan (ADR-030's rule, at the cost of a hand-written
+pass over the tokens that does not exist for any other flag); let the parser
+handle them but keep the pre-scan for help only (one more rule to document).
+
+Consequences: One flag mechanism, no duplicate help block, and the behavior
+matches every other command-line tool that uses the same parser. The precedence
+in ADR-030 no longer applies to the two informational flags; ADR-022/ADR-024/
+ADR-027/ADR-028/ADR-031 hold for every usage error. Tests assert the fixed
+order with a table of argument vectors.
+
+## ADR-034 — Usage errors print the message and the full help screen
+
+Status: Accepted
+
+Context: ADR-022/ADR-027 gave every usage error the usage line plus one
+message. Since ADR-032 the help screen is generated and complete, so a user who
+misses an option had to run `--help` separately; the one-line usage string in an
+error repeats a fragment of the screen without saying what the options are.
+
+Decision: A usage error prints, on stderr and in this order, the specific
+message, a blank line, and the full help screen from `ui.md`, then exits 2. The
+screen is the same one `-h`/`--help` prints, generated by the parser from the
+argument definitions; there is no second copy. The message stays first so the
+cause is read before the reference.
+
+Alternatives: keep the usage line plus the message (short, but no discoverable
+options); print the help first and the message last (the cause ends up at the
+bottom of a screen); send the help to stdout and the message to stderr (one
+error split across two streams, and a redirect keeps half of it).
+
+Consequences: Usage errors grow to a full screen, which is acceptable because
+they end the run. Tests assert the exact layout: message, blank line, help
+screen, exit 2.
+
+## ADR-035 — Errors are bright red on a terminal
+
+Status: Accepted
+
+Context: Coloring was scoped to the `V` and `F` cells of the truth table, and
+the presentation rule said errors stay plain. An error that ends the run, and
+in a file mode the run of many propositions, is the one line the user has to
+find among the tables; plain text gives it no more weight than a formula.
+
+Decision: The message of an error is painted bright red. For a usage error that
+is the cause line; the blank line and the help screen below it stay plain, so
+the reference reads normally. The paint is a presentation detail of the CLI:
+it applies only when the stream the error goes to (`stderr`) is a terminal, and
+never when `NO_COLOR` is set; a redirected error is plain text, and so is
+everything written to a file. The same treatment applies to the scan, parse and
+evaluation errors the Orchestrator reports, so every error looks alike.
+
+Alternatives: color the whole help screen with the message (loud, and the option
+list becomes harder to read); color always (escape codes in logs and shell
+captures); leave errors plain (the design's earlier rule, but the cause is
+visually indistinguishable from the output around it).
+
+Consequences: `colored` now covers errors as well as the table cells, and the
+choice depends on the destination stream rather than on the program. Tests
+assert the layout with and without the escapes; the terminal check itself is
+not automated.
+
 ## Errata
 
 - ADR-001 lists `Orchestrator.evaluate(source, simplify)`; the signature gained
@@ -763,8 +903,9 @@ errors.
   surface was extended by ADR-017, and its conflicts and strict usage rules are
   in ADR-022. ADR-030 adds `-h`/`--help` and `-V`/`--version`, whose names stay
   English; the Spanish-flag rule covers modes, modifiers and output. ADR-022's
-  usage line is now
-  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]`.
+  usage line is replaced by the compact
+  `uso: plogic [opciones] [proposición]` (ADR-032), which also carries the two
+  informational flags.
 - ADR-013's "bare argument with no flag" means no mode flag; modifiers may
   accompany it. Its `plogic ->` example is superseded by ADR-024: every
   dash-prefixed argument is an option, so that command is an unknown-flag error

@@ -20,10 +20,13 @@ class TruthTable
 note bottom of CLI
   The only impure component. It parses the command
   line (-p, -a, -i, -s, -h, -V and their long
-  forms in ui.md), reads and writes files and prints.
-  Help/version win over other arguments and exit 0.
-  Dash-prefixed arguments are options; -- ends
-  option parsing. Usage errors exit with code 2;
+  forms in ui.md), renders the help screen from the
+  argument definitions, reads and writes files and
+  prints. Help/version are clap's: they print in
+  argument order and exit 0. Dash-prefixed arguments
+  are options; -- ends option parsing. Usage errors
+  print the message and the full help screen and exit
+  with code 2;
   I/O problems are reported directly and are outside
   the Error model (ADR-014), with exit code 1.
 end note
@@ -38,6 +41,7 @@ note bottom of UI
   non-interactive run may redirect to plogic-output.txt
   when a table exceeds 1024 rows. In a terminal, only the
   V/F cells of the table are colored (V green, F red);
+  the message of an error is bright red on stderr;
   file output is plain.
 end note
 

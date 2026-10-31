@@ -47,6 +47,11 @@ exits with code 2.
 together with `--interactivo`, are also usage errors: a session produces many
 tables and there is no single file for them.
 
+A flag may appear only once. A repeated mode flag (`-p`, `-a`, `-i`) is
+`solo se puede usar un modo a la vez`; a repeated `-s`, `--no-simplificar` or
+`--tabla-simplificada` is `argumento inesperado: '<flag>'`, with the flag as
+the user typed it (ADR-031).
+
 An argument that begins with `-` is always an option, except `--`. `--` ends option
 parsing and is never an option value: a following argument is the bare
 proposition even if it begins with `-`, and at most one positional argument is
@@ -60,30 +65,40 @@ scanner receives the original text.
 
 ## Help and version
 
-`-h` / `--help` prints this help block on stdout and exits 0:
+`-h` / `--help` prints this help screen on stdout and exits 0:
 
 ```text
 plogic: evalúa proposiciones de lógica proposicional
 
-uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]
+uso: plogic [opciones] [proposición]
 
-modos:
-  <proposición>               evalúa una proposición
-  -p, --proposicion <texto>   evalúa una proposición
-  -a, --archivo <archivo>     evalúa una proposición por línea
-  -i, --interactivo           inicia una sesión interactiva
+argumentos:
+  [proposición]  evalúa una proposición
 
 opciones:
-  --no-simplificar            no simplifica la proposición
-  --tabla-simplificada        construye la tabla con la expresión simplificada
-  -s, --salida <archivo>      escribe la salida en <archivo>
-  -h, --help                  muestra esta ayuda
-  -V, --version               muestra la versión
+  -p, --proposicion <texto>  evalúa una proposición
+  -a, --archivo <archivo>    evalúa una proposición por línea
+  -i, --interactivo          inicia una sesión interactiva
+      --no-simplificar       no simplifica la proposición
+      --tabla-simplificada   construye la tabla con la expresión simplificada
+  -s, --salida <archivo>     escribe la salida en <archivo>
+  -h, --help                 muestra esta ayuda
+  -V, --version              muestra la versión
 ```
 
+The screen is generated from the argument definitions: each argument
+contributes its value name, its one-line description and the section it
+belongs to, so a new argument appears in the help without a second list to
+maintain. The usage line is the compact `uso: plogic [opciones]
+[proposición]`, and every description is lower-case, like the error messages.
+
 `-V` / `--version` prints exactly `plogic 0.1.0` on stdout and exits 0. Neither
-flag is a mode; either one, appearing as an option before `--`, wins over every
-other argument and over any usage error, and help wins if both appear.
+flag is a mode. Both are handled by the command-line parser, which prints them
+when it reaches them: an error raised by an earlier argument wins, so
+`plogic -x --help` and `plogic -p --help` are usage errors, while
+`plogic --help -x` prints the help and `plogic -V --help` prints the version.
+`--` still ends option parsing, so `plogic -- --help` evaluates the proposition
+`--help` (ADR-033).
 
 ## File mode
 
@@ -161,19 +176,23 @@ associativity requires (see truth_table.md).
 
 - Formatted errors (via `Orchestrator.report`) go to stderr, one per line;
   truth tables go to stdout.
-- Usage errors print the usage line
-  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]`
-  followed by the specific message, and exit 2. The specific messages are
+- An error's message is bright red when stderr is a terminal and `NO_COLOR`
+  is not set; a redirected error is plain, and the help screen below a usage
+  error is never colored (ADR-035).
+- Usage errors print, on stderr, the specific message, a blank line and the
+  full help screen above, then exit 2 (ADR-034). The specific messages are
   `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`, `solo se
   puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
   `'-s' no se puede usar con '--interactivo'`,
   `'--tabla-simplificada' no se puede usar con '--no-simplificar'` and
-  `no se proporcionó ninguna proposición`. Help and version are handled before
-  this list (ADR-030). When several usage errors apply, the CLI reports one
+  `no se proporcionó ninguna proposición`. Help and version are the parser's
+  and are printed when it reaches them, so an earlier argument's error wins
+  (ADR-033). When several usage errors apply, the CLI reports one
   message, the first in this order: unknown flag, missing flag value, more than
   one mode, extra positional, no proposition,
   `--tabla-simplificada` with `--no-simplificar`, `-s` with `--interactivo`
-  (ADR-027).
+  (ADR-027). A repeated flag counts at the place of the message it reuses
+  (ADR-031).
 - Exit codes: 0 on success or on help/version, 1 on any failing run (scan,
   parse, evaluation, a file with no propositions, or an I/O failure), 2 for
   usage errors.

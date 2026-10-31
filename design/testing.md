@@ -129,11 +129,14 @@ Property tests over generated expressions:
 ## 6. CLI
 
 - Modes: bare argument, `-p`, `-a`, `-i`.
-- Help and version: `-h` and `--help` print the exact help block from
+- Help and version: `-h` and `--help` print the exact help screen from
   `ui.md` on stdout and exit 0; `-V` and `--version` print `plogic 0.1.0` and
-  exit 0. Either, as an option before `--`, wins over an unknown flag, a missing
-  value and a mode conflict; with both flags present, help wins.
-- Strict usage errors (usage line plus message, exit 2): no argument,
+  exit 0. The parser prints them when it reaches them (ADR-033): an earlier
+  error wins, so `-x --help` and `-p --help` are usage errors, while
+  `--help -x`, `-hV` and `--help --version` print the help, and `-V --help`
+  prints the version. `-- --help` is a proposition.
+- Strict usage errors (message, blank line and the full help screen on stderr,
+  exit 2; ADR-034): no argument,
   modifier-only invocation, two mode flags, unknown flag, missing flag value,
   extra positional argument, empty `-p ''` / bare empty string, a single
   proposition that is whitespace only, `-s` with `-i`, and
@@ -145,15 +148,19 @@ Property tests over generated expressions:
   `falta el valor de '-p'`; two positionals after `--` are an
   extra-positional usage error. A proposition with surrounding spaces
   (`-p '  p  '`) still scans normally.
+- Repeated flags (ADR-031): `-p p -p q`, `-i -i` and `-a f -a g` report
+  `solo se puede usar un modo a la vez`; `-s a -s b` reports
+  `argumento inesperado: '-s'` and `--no-simplificar --no-simplificar` reports
+  `argumento inesperado: '--no-simplificar'`; all exit 2.
 - Usage-error precedence: `-x -i -s out.txt` reports
   `opción desconocida: '-x'` (unknown flag before the `-s` conflict);
   `-i -s out.txt --tabla-simplificada --no-simplificar` reports
   `'--tabla-simplificada' no se puede usar con '--no-simplificar'` before
   `'-s' no se puede usar con '--interactivo'`, and prints exactly one message.
   A `-p` missing its value wins over the extra positional that follows.
-- Exact strings: a table-driven test asserts the usage line
-  `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>] [-h | --help] [-V | --version]`
-  plus each of `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`,
+- Exact strings: a table-driven test asserts the layout of a usage error — the
+  specific message, a blank line, then the exact help screen from `ui.md` — for
+  `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`,
   `solo se puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
   `no se proporcionó ninguna proposición`, and the two conflict messages, with
   exit 2; the read/write messages with exit 1; and the redirect notification
@@ -206,5 +213,5 @@ Property tests over generated expressions:
   including a 12-variable one).
 - Terminal rendering of `¬`, `∧`, `∨`, `→`, `↔` on the target consoles; a
   non-UTF-8 terminal is a known limitation, not a test target. Color is a
-  terminal-only presentation detail: `V` green and `F` red in table cells,
-  plain text in files.
+  terminal-only presentation detail: `V` green and `F` red in table cells, the
+  message of an error bright red on stderr (ADR-035), plain text in files.
