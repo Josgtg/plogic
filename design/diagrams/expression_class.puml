@@ -14,30 +14,32 @@ note bottom of Expression
   Pure data: a method-free, closed hierarchy.
   Stages traverse it with pattern matching; there is
   no Visitor pattern and no per-node behaviour
-  (ADR-001).
+  (ADR-001). Fields are public; equality is
+  structural and ignores the operator token's
+  position (ADR-040).
 end note
 
 class Binary {
-  -left: Expression
-  -right: Expression
-  -operator: Token
+  +left: Expression
+  +right: Expression
+  +operator: Token
 }
 
 class Unary {
-  -operator: Token
-  -expression: Expression
+  +operator: Token
+  +expression: Expression
 }
 
 class Grouping {
-  -expression: Expression
+  +expression: Expression
 }
 
 class Literal {
-  -value: bool
+  +value: bool
 }
 
 class Identifier {
-  -name: str
+  +name: str
 }
 
 class ASTPrinter {
@@ -63,7 +65,8 @@ class InfixPrinter {
 note bottom of ASTPrinter
   Parenthesized prefix (Polish) notation, used for
   verification: (∧ (¬ p) q). Its parentheses never
-  depend on precedence.
+  depend on precedence. A Grouping prints as
+  (group …), so the tree shows as parsed.
 end note
 
 note bottom of InfixPrinter
@@ -72,7 +75,9 @@ note bottom of InfixPrinter
   associativity requires. In particular the left child
   of -> at equal precedence is parenthesized:
   (p → q) → r, while p → q → r means p → (q → r).
-  The only user-facing printer.
+  A right-nested ∧ or ∨ loses its parentheses
+  (p ∧ (q ∧ r) prints p ∧ q ∧ r); a Grouping is
+  transparent. The only user-facing printer.
 end note
 
 Parser ..> Expression : <<create>>

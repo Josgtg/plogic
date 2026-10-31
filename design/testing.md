@@ -51,10 +51,18 @@ invocation per case). Level 7 covers the product examples end to end.
   `((p | (q & s)) -> t) <-> (q | 0)`.
 - Grouping: parens override precedence; a redundant `Grouping` node is kept in
   the AST and dropped by `InfixPrinter` when unnecessary.
+- AST equality is structural and ignores the operator token's position: trees
+  with the same shape and operator kinds are equal even when they were written
+  at different lines and columns, and a `Grouping` is never equal to its bare
+  child (ADR-040).
 - Printers: `!p & q` gives `ASTPrinter` output `(∧ (¬ p) q)` and
-  `InfixPrinter` output `¬p ∧ q`; `(p | q) & r` keeps its parentheses.
+  `InfixPrinter` output `¬p ∧ q`; `(p | q) & r` keeps its parentheses;
+  `(p)` prints `p` in infix but `(group p)` in the prefix dump, because
+  `ASTPrinter` renders every `Grouping` as `(group …)` (ADR-040).
   Associativity-aware parentheses: `(p -> q) -> r` prints `(p → q) → r`,
-  while `p -> (q -> r)` prints `p → q → r`.
+  while `p -> (q -> r)` prints `p → q → r` and `p ↔ (q ↔ r)` keeps its
+  parentheses; a right-nested `∧` or `∨` loses them, so `p & (q & r)` prints
+  `p ∧ q ∧ r` (ADR-040).
 - Script loop: several propositions in one source, blank lines skipped, a
   final proposition without a trailing newline, an empty source.
 - Recovery: bad lines between good ones report each bad line's error and the

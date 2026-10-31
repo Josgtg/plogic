@@ -50,6 +50,8 @@ ADR-nnn`.
 | 036 | Token vocabulary details settled in implementation | Accepted |
 | 037 | The error type displays as its report line | Accepted |
 | 038 | The scanner owns the source; a lone CR is invalid | Accepted |
+| 039 | An underscore continues an identifier but never starts one | Accepted |
+| 040 | AST details: public fields, equality without positions, grouping in the printers | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -980,6 +982,45 @@ Consequences: the scanner's word predicate is `is_ascii_alphanumeric() || c ==
 match still treats `_` as an invalid character. The error-message rule of
 ADR-036 is untouched — `_` in a non-word position is still
 `carácter inválido '_'`.
+
+## ADR-040 — AST details: public fields, equality without positions, grouping in the printers
+
+Status: Accepted
+
+Context: ADR-015 fixes two printers over an `Expression` tree whose nodes
+carry the operator `Token` (for its spelling), and `parser.md` shows the
+nodes. Three details were left open. First, whether the node fields are
+reachable from other modules, as the token fields are (ADR-036). Second, what
+equality means for a tree: the token carries `line` and `col`, but the
+Simplifier compares operand lists to decide whether two subformulas are the
+same (idempotence, absorption, factoring) and its canonical order is
+structural, so a position in the comparison would be a bug waiting to happen.
+Third, how `ASTPrinter` renders a `Grouping`, which `InfixPrinter` prints
+transparently.
+
+Decision: The node fields are public, like the token fields, so the parser and
+the stages pattern-match and build nodes without constructors. `Expression`
+derives `Debug` and `Clone` and implements `PartialEq`/`Eq` by hand: it
+compares the shape and each operator's `TokenType`, never the operator's
+position. `ASTPrinter` prints a `Grouping` as `(group …)`, as the book's
+printer does, so the verification output shows exactly the tree the parser
+built, redundant parentheses included. `InfixPrinter` keeps its
+associativity-aware rule for `→` and `↔` and also drops parentheses for a
+right-nested `∧` or `∨` (`p ∧ (q ∧ r)` prints `p ∧ q ∧ r`), because those
+operators are associative and the parentheses are not needed to read the
+formula; the design keeps `p ↔ (q ↔ r)` explicit.
+
+Alternatives: private fields with constructors or accessors (more code for a
+tree that is pure data); derive `PartialEq` including positions (simpler, but
+positions would leak into the Simplifier's structural equality); print a
+grouping transparently in `ASTPrinter` (shorter, but two different trees print
+identically); keep the right-nested `∧`/`∨` parentheses (uniform rule, but the
+display disagrees with the simplifier's flattened output).
+
+Consequences: structural comparisons in the Simplifier are sound; tests can
+compare hand-built trees against parsed ones without reproducing positions;
+`ASTPrinter` is a faithful tree dump; the infix form of `p ∧ (q ∧ r)` loses a
+parenthesis the user wrote, which is harmless because the meaning is the same.
 
 ## Errata
 

@@ -59,6 +59,15 @@ renders them in parenthesized prefix notation for verification, and
 `InfixPrinter` renders them in the normalized infix form for display (see
 truth_table.md).
 
+The node fields are public and equality is structural over the node shape and
+the operators' kinds, not their positions: the Simplifier compares subformulas
+and its canonical order must not depend on where an operator was typed
+(ADR-040). `ASTPrinter` prints a `Grouping` as `(group …)`, so the verification
+output shows the tree exactly as parsed, and `InfixPrinter` prints a grouping
+transparently, keeping only the parentheses precedence or associativity
+requires. In particular `(p | q) & r` keeps them, `(p)` loses them, and a
+right-nested `∧` or `∨` loses them too (`p & (q & r)` prints `p ∧ q ∧ r`).
+
 Example: `!p & q` becomes
 `Binary(Unary(Not, Identifier("p")), Identifier("q"), And)`, printed by
 `ASTPrinter` as `(∧ (¬ p) q)` and by `InfixPrinter` as `¬p ∧ q`.
