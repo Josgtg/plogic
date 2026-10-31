@@ -11,6 +11,8 @@ mod parser;
 #[allow(dead_code)]
 mod scanner;
 #[allow(dead_code)]
+mod simplifier;
+#[allow(dead_code)]
 mod tokens;
 
 use std::ffi::OsString;
