@@ -6,6 +6,8 @@ mod error;
 #[allow(dead_code)]
 mod expression;
 #[allow(dead_code)]
+mod parser;
+#[allow(dead_code)]
 mod scanner;
 #[allow(dead_code)]
 mod tokens;
