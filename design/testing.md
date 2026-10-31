@@ -89,6 +89,9 @@ invocation per case). Level 7 covers the product examples end to end.
 - Canonical examples: `p -> q` gives `q | !p`; `p <-> q` gives
   `(p | !q) & (q | !p)`; `!(p | q)` gives `!p & !q`.
 - Idempotence: `simplify(simplify(e)) == simplify(e)`.
+- Determinism: the rules apply in the law table's order and the expansion
+  visits the tree pre-order, so the same input gives the same output
+  (ADR-042); a chain rule matches any pair of operands of a longer chain.
 - Termination on the shapes that could oscillate: factoring then expansion,
   `p & (q | r)`, nested De Morgan, double negation.
 - Expansion phase accepts only strict improvements — the rejected candidate of

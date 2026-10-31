@@ -53,6 +53,7 @@ ADR-nnn`.
 | 039 | An underscore continues an identifier but never starts one | Accepted |
 | 040 | AST details: public fields, equality without positions, grouping in the printers | Accepted |
 | 041 | Parser details: owned tokens, kind predicates and a total cursor | Accepted |
+| 042 | Simplifier details: rule order, chain matching and expansion order | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1061,6 +1062,50 @@ scanner's output is always well formed, but errors are values, never panics).
 Consequences: the parser is as pure and lifetime-free as the scanner; the
 diagram lists predicate helpers instead of `TokenType` arguments; tests can
 call `parse` with any token list without risking a panic.
+
+## ADR-042 — Simplifier details: rule order, chain matching and expansion order
+
+Status: Accepted
+
+Context: `simplifier.md` fixes the laws, the direction each is used in, the
+canonical order and the shape of the expansion loop, but leaves the mechanics
+open in four places that change the output. Several laws can match the same
+node, a two-operand law has to look inside chains longer than two operands, the
+expansion loop needs a deterministic traversal, and the new nodes the rules
+create need an operator token the source never spelled.
+
+Decision: The reduction rules are tried in the order of the law table —
+idempotence, identity, domination, complement, absorption, redundancy,
+conditional and biconditional elimination, then factoring (law 4 read right to
+left). Absorption and redundancy match every ordered pair of operands of the
+flattened chain, so `p | q | (p & s)` absorbs to `p | q`. Each rewrite is a
+single step: a bottom-up, left-to-right scan applies the first match, the
+result is canonicalized, and the scan restarts from the root until no rule
+matches. The expansion phase visits nodes pre-order (a node before its
+children, left operand first) and, at each node, tries law 4a before 4b and
+the matching operands left to right; the first strict improvement wins and the
+phase restarts from it. A distribution over a chain with other operands
+distributes the rest of the chain too (`(p | s) | (q & r)` gives
+`(p | s | q) & (p | s | r)`). Nodes the rules create use synthetic `!`, `&`
+and `|` tokens at line 0, column 0; expression equality ignores positions
+(ADR-040), so they are indistinguishable from parsed ones. `simplify` takes
+`&Expression` (the orchestrator keeps the original to tabulate it), and the
+weight saturates instead of overflowing, so a pathologically nested negation
+cannot panic in a debug build.
+
+Alternatives: try the "biggest" law first (no reason grounded in the document,
+and it makes the output harder to predict); apply absorption and redundancy
+only to an exact two-operand node (contradicts `simplifier.md`); visit the
+expansion tree post-order (deterministic too, but the result is less
+predictable from the text); distribute only when the outer chain has exactly
+two operands (leaves many expansions untried); panic on the weight overflow
+(errors are values; a panic over a legal, if silly, input is not).
+
+Consequences: the output is deterministic and reproducible from the document,
+and every rewrite is a single, testable step. The price is a canonicalization
+per step, which is acceptable because the trees are small, and a weight that
+saturates in contrived inputs, where the program then stops simplifying
+further instead of misbehaving.
 
 ## Errata
 

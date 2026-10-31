@@ -40,7 +40,8 @@ note bottom of Simplifier
      structural); the AST keeps binary nodes.
   2. reduce: oriented local rewrites, bottom-up, to a
      fixed point; every rule strictly lowers the
-     weight W.
+     weight W. Rules run in law-table order, and a
+     two-operand rule matches any pair of the chain.
   3. expand: laws 4a/4b are tried one at a time and
      kept only if W(candidate) < W(best).
 

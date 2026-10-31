@@ -131,6 +131,17 @@ Because `&` and `|` are flattened and sorted, a two-operand pattern matches any
 two operands of a longer chain. For example, 11a matches `a | b | (a & c)`
 by taking `a` and `(a & c)`. Rule results are re-canonicalized.
 
+## Order of application
+
+Several laws can match the same node, so the order is fixed: the law table's
+order — idempotence, identity, domination, complement, absorption, redundancy,
+conditional and biconditional elimination, then factoring. Each rewrite is one
+step: a bottom-up, left-to-right scan applies the first match, canonicalizes
+the result and starts again from the root until nothing matches. The expansion
+phase visits nodes pre-order (node before children, left operand first) and
+tries 4a before 4b and its operands left to right; the first candidate that
+weighs strictly less wins and the phase restarts from it (ADR-042).
+
 ## Weight and termination
 
 Every expression has a weight `W`, a natural number. `W` is defined after
@@ -169,7 +180,9 @@ operands plus one per connective, however it is nested or ordered) and always
 terminates, since it only flattens and sorts. `W` is a natural number that
 cannot decrease forever, so reduction reaches a fixed point after finitely
 many rewrites. No iteration cap is needed for correctness; one may be kept as
-a debug assertion.
+a debug assertion. The implementation saturates `W` instead of overflowing, so
+a pathologically nested negation cannot panic; a saturated weight simply stops
+counting further decreases (ADR-042).
 
 `W` is not the connective count. De Morgan (10a, 10b) and the biconditional
 law (14a) add connectives but lower `W`: `W` prefers negations on small
