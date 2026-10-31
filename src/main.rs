@@ -1,4 +1,8 @@
 mod cli;
+// Temporary: the scanner, the next stage, is the first consumer of the token
+// vocabulary, so nothing reads it in a non-test build yet.
+#[allow(dead_code)]
+mod tokens;
 
 use std::ffi::OsString;
 
