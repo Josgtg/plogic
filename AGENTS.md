@@ -11,9 +11,10 @@ Nystrom, in a functional style rather than the book's OOP.
 
 Current state: early implementation. The design is complete; the CLI argument parser
 (`src/cli/`), the token vocabulary (`src/tokens.rs`), the shared error type
-(`src/error.rs`) and the scanner (`src/scanner.rs`) are implemented, and the rest of the
-pipeline is still missing. Implement against `design/`: the book supplies the algorithms,
-but the design documents win wherever the two differ.
+(`src/error.rs`), the scanner (`src/scanner.rs`) and the abstract syntax tree with its two
+printers (`src/expression.rs`) are implemented, and the rest of the pipeline is still
+missing. Implement against `design/`: the book supplies the algorithms, but the design
+documents win wherever the two differ.
 
 ## How to help me design
 
@@ -22,6 +23,14 @@ design decisions. Ask one focused question with concrete options (the question t
 fine), then proceed. It is expected to stop mid-task for this. Always ask, don't be
 afraid to do it. You asking 100 times is better than you taking a single significant
 design decision by yourself.
+
+## Tests
+
+Do not write tests yourself. Once the code compiles, hand the test plan from
+`design/testing.md` to the `test-writer` subagent: tests written from the design, by
+someone who did not write the code, catch assumptions that the implementation and its own
+tests would share. If a test disagrees with the code, settle the design question first —
+in `design/decisions.md` — and change whichever side the decision says is wrong.
 
 ## Sources of truth
 
@@ -107,6 +116,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/tokens.rs` | the token vocabulary: `TokenType`, `Token` and `TokenType::map` |
 | `src/error.rs` | the shared `Error` enum and its `Display` |
 | `src/scanner.rs` | the scanner: source text to tokens |
+| `src/expression.rs` | the AST: `Expression`, `ASTPrinter` and `InfixPrinter` |
 | `src/cli/` | the UI/CLI: argument parsing now, presentation later |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |
