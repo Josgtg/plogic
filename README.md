@@ -4,9 +4,9 @@ A propositional logic evaluator: it reads propositions, simplifies them, and bui
 truth table for each one.
 
 > **Status: early implementation.** The language, the pipeline and the CLI are fully
-> designed in [`design/`](design/). The CLI argument parser and the token vocabulary are
-> implemented; the rest of the pipeline is not written yet. Everything below documents
-> the intended behavior.
+> designed in [`design/`](design/). The CLI argument parser, the token vocabulary and the
+> scanner are implemented; the rest of the pipeline is not written yet. Everything below
+> documents the intended behavior.
 
 ## Build and run
 
@@ -91,9 +91,10 @@ connective can be written as a symbol or as a Spanish word:
 
 - **Literals** are written `0`, `1`, `F` or `V`; `0` and `F` mean false, `1` and `V`
   mean true.
-- **Identifiers** are an ASCII letter followed by ASCII letters or digits (`p`, `q1`,
-  `Premisa`), case-sensitive. The words used as spellings (`no`, `y`, `o`, `entonces`,
-  `sisolosi`, `V`, `F`) are reserved and cannot be identifiers.
+- **Identifiers** are an ASCII letter followed by ASCII letters, digits or underscores
+  (`p`, `q1`, `p_1`, `Premisa`), case-sensitive; an underscore cannot start one. The
+  words used as spellings (`no`, `y`, `o`, `entonces`, `sisolosi`, `V`, `F`) are
+  reserved and cannot be identifiers.
 - **Parentheses** group a subexpression.
 
 Precedence, lowest to highest: biconditional, implication, disjunction, conjunction,
