@@ -19,9 +19,10 @@ A token is `Token { type: TokenType, line: int, col: int }` with a
   identifier's name. It is used by `ASTPrinter`, `InfixPrinter` and by
   diagnostics.
 
-The token does not keep its lexeme. A proposition is displayed in one
-normalized form (see truth_table.md), so how the user spelled a kind
-(`y`, `entonces`, `0`, `->`) never reaches the output.
+The token does not keep the source spelling of a connective or a literal;
+identifiers keep their name. A proposition is displayed in one normalized
+form (see truth_table.md), so how the user spelled a kind (`y`, `entonces`,
+`0`, `->`) never reaches the output.
 
 ## TokenType
 
@@ -43,7 +44,7 @@ normalized form (see truth_table.md), so how the user spelled a kind
 The vocabulary is closed: XOR, NAND and NOR are out of scope and are *not*
 variants.
 
-## Lexeme table: `TokenType.map(lexeme: str): Result<TokenType>`
+## Lexeme table: `TokenType.map(lexeme: str): Result<TokenType, str>`
 
 `map` is the single place where spellings are defined. Known spellings map
 to their kind:
@@ -59,9 +60,10 @@ to their kind:
 | `Literal(false)` | `0` `F` |
 | `LeftParen`, `RightParen` | `(` `)` |
 
-`map` returns `Err` for any other lexeme. The scanner then decides what to
-do with it: a word-shaped lexeme becomes `Identifier(lexeme)`, anything
-else is a `ScanError` (see scanner.md).
+`map` returns `Err(message)` for any other lexeme, where the message says what
+was expected. The scanner then decides what to do with it: a word-shaped
+lexeme becomes `Identifier(lexeme)`, anything else is a `ScanError` with the
+message attached to the token's position (see scanner.md).
 
 Two consequences worth spelling out:
 

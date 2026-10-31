@@ -6,11 +6,26 @@ are normal input, not crashes.
 ## Principles
 
 - Errors are values, never exceptions or panics.
-- Every fallible operation returns `Result<T>` (`TokenType.map`,
-  `Scanner.scan`, `Parser.parse`, every parser rule, and — for its single
-  failure case — `Interpreter.interpret`).
 - Failure is signalled by `Err`, never by an empty table or a flag.
 - Only the UI/CLI is impure.
+- The payload convention is defined below: stages carry a list, helpers carry
+  one error (parser rules additionally carry the state, ADR-025).
+
+## Result conventions
+
+In a stage signature, `Result<T>` means `Result<T, List<Error>>`. The public
+entry points are `Scanner.scan`, `Parser.parse`, `Interpreter.interpret` and
+`Orchestrator.evaluate`; a stage that fails returns `Err(errors)` with a
+non-empty list from that stage only.
+
+Internal helpers return `Result<T, Error>`, with three exceptions. Parser
+rules and their `consume` helper return
+`Result<T, (Error, ParseState)>` so a failure carries the state where parsing
+stopped, and `Parser.parse` can synchronize from that point before collecting
+the error into the stage list. `TokenType.map` returns `Result<TokenType, str>`
+because it has no position: on `Err(message)` the scanner records
+`ScanError(line, col, message)` at the token start. `Simplifier.simplify` is
+total and returns `Expression`.
 
 ## The error type
 
@@ -38,8 +53,10 @@ position, so it carries no `line`/`col`.
 `Simplifier.simplify` and `TruthTable` cannot fail at all. The only error
 after parsing is the Interpreter's size limit: a truth table of more than
 4096 rows is refused before any row is enumerated (an `EvalError`, see
-interpreter.md). I/O problems (an unreadable file, for instance) belong to
-the CLI and are handled outside this model.
+interpreter.md). At the stage boundary it is `Err([EvalError(...)])`; the
+brackets are the stage list (ADR-019). I/O problems (an unreadable file, for
+instance) belong to the CLI, are handled outside this model, and exit 1 (see
+ui.md).
 
 ## Recovery inside a stage, gates between stages
 
@@ -64,8 +81,7 @@ Consequences:
 - When a run fails, no truth tables are produced at all — but every error
   of the failing stage is reported.
 - An `Err` list holds errors of exactly one stage: `ScanError`,
-  `ParseError` and `EvalError` never mix. (This supersedes the earlier idea
-  that parsing would run after scan errors.)
+  `ParseError` and `EvalError` never mix.
 
 ## Reporting
 

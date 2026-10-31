@@ -7,11 +7,14 @@ Crafting Interpreters ch. 6. It runs only when scanning succeeded.
 
 ## Entry point and state
 
-- `Parser.parse(tokens: List<Token>): Result<List<Expression>>` — static
-  entry point; the parser is never constructed.
+- `Parser.parse(tokens: List<Token>): Result<List<Expression>, List<Error>>`
+  — static entry point; the parser is never constructed.
 - The immutable `ParseState { tokens, current }` is threaded through every
-  rule; each rule returns `Result<(Expression, ParseState)>` (one `Error`
-  per rule-level result) and `ParseState` is returned anew.
+  rule; each rule returns
+  `Result<(Expression, ParseState), (Error, ParseState)>` and `ParseState` is
+  returned anew. On failure the second component is the state at the failing
+  token, so `parse` can call `synchronize` from exactly there. The stage entry
+  point collects rule errors into the `List<Error>` it returns.
 
 ## Grammar
 
@@ -32,8 +35,7 @@ primary        -> Literal | Identifier | "(" expression ")" ;
 One method per level: `expression`, `biconditional`, `implication`,
 `disjunction`, `conjunction`, `unary`, `primary`, plus `proposition` for
 the statement level. With one connective per precedence level, the book's
-operator families collapse to single-operator levels. The class diagrams
-still show the `Xor` / `Nand` / `Nor` families; those are pending removal.
+operator families collapse to single-operator levels.
 
 ## Precedence and associativity
 
@@ -57,9 +59,9 @@ renders them in parenthesized prefix notation for verification, and
 `InfixPrinter` renders them in the normalized infix form for display (see
 truth_table.md).
 
-Example: `!p & q` becomes `Binary(Unary(Not, Identifier("p")), And,
-Identifier("q"))`, printed by `ASTPrinter` as `(∧ (¬ p) q)` and by
-`InfixPrinter` as `¬p ∧ q`.
+Example: `!p & q` becomes
+`Binary(Unary(Not, Identifier("p")), Identifier("q"), And)`, printed by
+`ASTPrinter` as `(∧ (¬ p) q)` and by `InfixPrinter` as `¬p ∧ q`.
 
 ## Script loop and error recovery
 
@@ -70,9 +72,10 @@ Identifier("q"))`, printed by `ASTPrinter` as `(∧ (¬ p) q)` and by
   trailing newline.
 - On a parse error the parser records the `ParseError`, then
   `synchronize`: a pure `ParseState -> ParseState` step that skips tokens
-  until just after the next `Newline`, or until `Eof`. Parsing then
-  continues with the next proposition, so as many errors as possible are
-  reported.
+  until just after the next `Newline`, or until `Eof`. It starts from the
+  state carried by the failing rule, which points at the failing token.
+  Parsing then continues with the next proposition, so as many errors as
+  possible are reported.
 - At the end of the loop the stage result is `Err(errors)` — the partial
   expression list is discarded — or `Ok(expressions)`. This is a stage
   gate: on `Err` nothing is simplified or evaluated.

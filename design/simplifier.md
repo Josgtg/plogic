@@ -1,16 +1,22 @@
 # Plogic - Simplifier design
 
-Role: rewrites a proposition into an equivalent proposition of lower weight
-(defined below), using the laws of propositional algebra (components diagram,
-steps 6-7). The Simplifier is pure and total: `Expression` in, `Expression`
-out, no errors. Its output contains only negation, conjunction and
-disjunction (written `!`, `&`, `|` here and displayed as `¬`, `∧`, `∨`):
-conditionals and biconditionals are eliminated.
+Role: rewrites a proposition into an equivalent proposition of no greater
+weight (strictly lower whenever a rewrite applies; defined below), using the
+laws of propositional algebra (components diagram, steps 6-7). The Simplifier
+is pure and total: `Expression` in, `Expression` out, no errors. Its output
+contains only negation, conjunction and disjunction (written `!`, `&`, `|`
+here and displayed as `¬`, `∧`, `∨`): conditionals and biconditionals are
+eliminated.
 
 ## Strategy
 
-Three parts:
+The strategy has four parts:
 
+0. **Erase grouping.** Every `Grouping` is stripped recursively before
+   anything else. Grouping only records how the source was written; the
+   operators' precedence already encodes the meaning. The rest of the
+   Simplifier never sees a `Grouping`, and the output contains none. The
+   parser and both printers keep it for the original expression (ADR-018).
 1. **Canonicalization** (laws 2 and 3). `&` and `|` chains are flattened and
    their operands sorted, so every other law matches regardless of operand
    order or nesting. This never changes the weight.
@@ -52,7 +58,7 @@ Two expressions are compared by kind first, then within the kind:
 | Rank | Kind | Tie-break within the same kind |
 | --- | --- | --- |
 | 1 | constant | `F` before `V` (false before true) |
-| 2 | variable | alphabetical by name |
+| 2 | variable | ASCII code-point order of the names, case-sensitive; a prefix sorts before its extensions (`P` before `p`, `p` before `p1`) |
 | 3 | `!x` | compare the operands `x` |
 | 4 | `&` chain | compare the operand lists element by element, then by length |
 | 5 | `\|` chain | same as `&` |
@@ -63,8 +69,9 @@ For example, `q & p & !p & (r | s) & V` sorts to
 `q`, then `!p`, then the `|` chain.
 
 Canonical order is internal to the Simplifier. It shows in the simplified
-formula; the proposition itself is labelled with the operand order the user
-wrote (see truth_table.md).
+formula; the original proposition is labelled with the operand order the user
+wrote (see truth_table.md). With `--tabla-simplificada` the label is the
+simplified formula, so it is in canonical order too.
 
 This document writes the laws with `!`, `&`, `|`, `->` and `<->` because
 they are easier to type; the user-facing display uses `¬`, `∧`, `∨`, `→` and
@@ -126,7 +133,8 @@ by taking `a` and `(a & c)`. Rule results are re-canonicalized.
 
 ## Weight and termination
 
-Every expression has a weight `W`, a natural number:
+Every expression has a weight `W`, a natural number. `W` is defined after
+grouping has been erased, so it never needs a `Grouping` case:
 
 | Node | Weight |
 | --- | --- |
@@ -219,10 +227,15 @@ Operand order in the output follows the canonical order.
 | `(p & q) \| (p & r)` | 4b (factoring) | `p & (q \| r)` |
 | `!(!p \| !q)` | 10a, 7a | `p & q` |
 | `p \| (!p & q)` | 12a | `p \| q` |
-| `p -> q` | 13a | `!p \| q` |
-| `p <-> q` | 14a | `(!p \| q) & (!q \| p)` |
+| `p -> q` | 13a | `q \| !p` |
+| `p <-> q` | 14a | `(p \| !q) & (q \| !p)` |
 | `(p & q) \| (p & !q)` | 4b (factoring), 8a, 5b | `p` |
+| `q & (p & r)` | 2b, 3b | `p & q & r` |
 | `p & (q \| r)` | none | `p & (q \| r)` |
+
+The outputs are canonical: `p -> q` becomes `q | !p`, not `!p | q`;
+the biconditional's two `|` operands sort with `p | !q` first; and
+`q & (p & r)` flattens and sorts to `p & q & r`.
 
 - `!(!p | !q)`: 10a gives `!!p & !!q` (W 10 -> 9); 7a on each side gives
   `p & q` (W 3).

@@ -28,6 +28,19 @@ ADR-nnn`.
 | 014 | I/O errors live outside the `Error` model | Accepted |
 | 015 | Two printers: `ASTPrinter` and `InfixPrinter` | Accepted |
 | 016 | 1-based positions, columns counted in characters | Accepted |
+| 017 | Default tabulates the original; `--tabla-simplificada` tabulates the simplified | Accepted |
+| 018 | Erase `Grouping` before simplification | Accepted |
+| 019 | Stage results carry `List<Error>`; helpers carry one error | Accepted |
+| 020 | Immutable `TruthTable` with `with_display` | Accepted |
+| 021 | Interactive modifiers and always-on classification | Accepted |
+| 022 | Strict CLI usage, I/O exit 1, redirect on every non-interactive run | Accepted |
+| 023 | Simplification lowers weight, not necessarily connective count | Accepted |
+| 024 | Dash-prefixed arguments are options; `--` ends option parsing; trim blank propositions | Accepted |
+| 025 | Parser rule failures carry the `ParseState` | Accepted |
+| 026 | `table_simplified` is ignored when `simplify` is false | Accepted |
+| 027 | Fixed precedence for usage errors | Accepted |
+| 028 | `--` is an optional trailing separator | Accepted |
+| 029 | Blank lines separate the presented sections | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -357,3 +370,380 @@ Consequences: reported positions match what the user sees in an editor gutter.
 The scanner must advance character by character, which it already does to
 recognize the formal symbols, and a tab makes the reported column differ from
 the visual one.
+
+## ADR-017 — Default tabulates the original; `--tabla-simplificada` tabulates the simplified
+
+Status: Accepted
+
+Context: The Simplifier sorts operands and can remove variables. Building the
+truth table from the simplified expression by default would reorder the
+columns, drop variables that the user wrote, and check the 4096-row limit
+against the wrong variable set. The product promises one column per distinct
+variable in order of first appearance. At the same time, the smaller table of
+the simplified formula is useful on its own.
+
+Decision: By default the Interpreter receives the original expression.
+Variables, rows, the 4096-row check and the result-column label all come from
+it; when simplification ran, its formula is also shown in a `Simplificada:`
+line. With `--tabla-simplificada` (long-only, no short alias), the Interpreter
+receives the simplified expression: variables, rows, the check and the label
+come from it, the `Simplificada:` line still prints and repeats the label, and
+the classification is still printed. `--tabla-simplificada` combined with
+`--no-simplificar` is a usage error in every mode.
+
+Alternatives: always tabulate the simplified expression (wrong columns for the
+proposition the user wrote); pass the original variable list to the Interpreter
+(couples it to a display decision and still loses variables with the flag); show
+two tables (more output than asked for).
+
+Consequences: default output always shows every variable the user wrote, in
+first-appearance order. The flag can shrink the table to the simplified
+variables, including the zero-variable constant case, and can make a
+13-variable original acceptable when its simplified form has at most 12
+variables. The Interpreter stays unaware of original versus simplified: it
+evaluates the expression it receives.
+
+## ADR-018 — Erase `Grouping` before simplification
+
+Status: Accepted
+
+Context: The parser keeps `Grouping` nodes so the AST and `InfixPrinter` can
+preserve the parentheses the user wrote. The Simplifier's weight, canonical
+order and law matching were defined on the other variants only; with `Grouping`
+present, `W` and the termination argument were undefined.
+
+Decision: `Simplifier.simplify` first strips every `Grouping`, recursively,
+before canonicalization or reduction. The rest of the Simplifier never sees a
+`Grouping`, and its output contains none. The parser, the AST and both printers
+keep `Grouping` for the original expression and its label.
+
+Alternatives: define `W(Grouping(p)) = W(p)` and make every traversal see
+through it; give `Grouping` a canonical rank; remove `Grouping` from the AST.
+
+Consequences: simplification is total again and the weight table stays small.
+Parentheses survive in the label and in `--no-simplificar` output; the
+simplified formula relies on `InfixPrinter`'s precedence-aware parentheses.
+Nested grouping is erased in one pass.
+
+## ADR-019 — Stage results carry `List<Error>`; helpers carry one error
+
+Status: Accepted
+
+Context: The documents disagreed on the error payload: parser rules return one
+`Error`, the Interpreter and tests wrote `Err(EvalError(...))`, and AGENTS and
+ADR-002 said every fallible operation carries `List<Error>`.
+
+Decision: Public stage entry points (`Scanner.scan`, `Parser.parse`,
+`Interpreter.interpret`, `Orchestrator.evaluate`) return
+`Result<T, List<Error>>`; `Err` always carries a non-empty list from the stage
+that failed. Internal helpers return `Result<T, Error>`; parser rules are the
+main case. `TokenType.map` returns `Result<TokenType, str>` because it has no
+position: the scanner turns the message into `ScanError(line, col, message)` at
+the token start. A stage wraps a helper error into a one-element list before
+returning. `Simplifier.simplify` stays total and returns `Expression`.
+
+Alternatives: lists everywhere (noise inside rules); one error everywhere
+(stage gates lose multi-error reporting); two named aliases.
+
+Consequences: `Err` at a stage boundary is always a list, including evaluation
+failures written as `Err([EvalError(...)])`. The scanner and parser can still
+recover internally and collect several errors before returning. Tests assert
+one representation per boundary.
+
+## ADR-020 — Immutable `TruthTable` with `with_display`
+
+Status: Accepted
+
+Context: The Interpreter creates the table with variables and rows, while the
+Orchestrator knows the original and simplified display text. The documents said
+the Orchestrator "fills" the display text, which implied mutation and had no
+factory.
+
+Decision: The Interpreter creates a `TruthTable` with variables and rows; the
+display fields start empty. `TruthTable.with_display(label: str, simplified:
+str?): TruthTable` returns a new table with the display fields set. The
+Orchestrator calls it once per table. There are no setters and no mutation.
+
+Alternatives: the Interpreter receives the display strings (couples it to the
+CLI); the Orchestrator constructs the table (duplicates the Interpreter's
+invariants); mutable fields (violates purity).
+
+Consequences: the table is immutable end to end. `Interpreter ..> TruthTable :
+<<create>>` and `Orchestrator ..> TruthTable : with_display` remain accurate.
+
+## ADR-021 — Interactive modifiers and always-on classification
+
+Status: Accepted
+
+Context: `ui.md` excluded `-i` from the modifier flags while ADR-013 and the
+README allowed `--no-simplificar -i`. The classification line was suppressed
+under `--no-simplificar` without a recorded decision, and ADR-012's lower-case
+rule did not say whether labels such as `Simplificada:` were included.
+
+Decision: `--no-simplificar` and `--tabla-simplificada` each apply in
+interactive mode; using them together is a usage error there too. The
+classification (`tautología`, `contradicción`, `contingencia`) is always
+printed, from the table's result column, in every mode and with or without
+simplification. The labels `Simplificada:` and `Esta proposición...` keep
+their capital initial; the lower-case rule of ADR-012 applies to error messages
+and prompts.
+
+Alternatives: reject modifiers in interactive mode; suppress the
+classification with `--no-simplificar`; lower-case the labels.
+
+Consequences: interactive behavior matches single-proposition and file mode,
+and the classification is independent of whether a simplified line was shown.
+
+## ADR-022 — Strict CLI usage, I/O failures exit 1, redirect on every non-interactive run
+
+Status: Accepted
+
+Context: The CLI left several edge cases and Spanish strings unspecified, the
+README described the automatic redirect as applying to any run while `ui.md`
+called it batch-only, and no exit code was assigned to I/O failures.
+
+Decision: The CLI is strict. No arguments, a modifier-only invocation, a
+missing flag value, an extra positional argument, more than one mode, `-s` with
+`-i`, `--tabla-simplificada` with `--no-simplificar`, and an empty `-p ''` are
+usage errors: a usage message on stderr and exit code 2. `-s` writes only on
+success. Reading or writing a file fails with exit code 1 and a Spanish
+message; the `Error` model is not used for I/O. The automatic
+`plogic-output.txt` redirect applies to any non-interactive run (single
+proposition or file) when any table has more than 1024 rows; `-s` wins;
+interactive sessions never redirect.
+
+The exact strings are:
+
+- usage: `uso: plogic [<proposición> | -p <proposición> | -a <archivo> | -i] [--no-simplificar | --tabla-simplificada] [-s <archivo>]`
+- `falta el valor de '<flag>'`
+- `opción desconocida: '<flag>'`
+- `solo se puede usar un modo a la vez`
+- `argumento inesperado: '<arg>'`
+- `'-s' no se puede usar con '--interactivo'`
+- `'--tabla-simplificada' no se puede usar con '--no-simplificar'`
+- `no se proporcionó ninguna proposición`
+- `no se pudo leer el archivo '<path>': <detalle>`
+- `no se pudo escribir el archivo '<path>': <detalle>`
+- `el archivo no contiene proposiciones`
+- redirect notification: `la salida se escribió en plogic-output.txt` (stderr)
+
+Alternatives: permissive parsing; exit 0 on I/O failure; redirect only in file
+mode; only the explicit `-s` destination.
+
+Consequences: every CLI edge case has one outcome and one message. `-s` with
+`--tabla-simplificada` and `-s` with `--no-simplificar` remain valid, and `-s`
+wins over the automatic file name.
+
+## ADR-023 — Simplification lowers weight, not necessarily connective count
+
+Status: Accepted
+
+Context: `product_description.md` and ADR-007's context said the reduced
+formula has fewer connectives, but the law table includes De Morgan and the
+biconditional expansion, which add connectives while lowering `W`.
+
+Decision: The guarantee is the same truth table and a strictly lower weight
+whenever a rewrite applies. The simplified formula need not have fewer
+connectives. `--no-simplificar` keeps the original expression untouched.
+
+Alternatives: require a connective-count decrease (blocks useful laws); count
+connectives in `W` (gives the wrong ordering).
+
+Consequences: documents and tests assert equivalence and decreasing weight,
+not a smaller connective count.
+
+## ADR-024 — Dash-prefixed arguments, `--`, and blank propositions
+
+Status: Accepted
+
+Context: Strict unknown-flag handling and bare propositions can conflict when
+an argument begins with `-`. A single proposition can also arrive empty or
+whitespace-only from a shell variable, and it has to be distinguished from a
+genuine proposition that happens to contain spaces.
+
+Decision: Every argument that begins with `-` is an option, unless it appears
+after `--`. `--` ends option parsing: the next argument is the single bare
+proposition even if it begins with `-`, and at most one positional argument is
+allowed after it. Thus `plogic ->` is `opción desconocida: '->'` and exits 2,
+while `plogic -- '->'` passes `->` to the scanner. A single proposition, bare
+or from `-p`, is trimmed; if nothing remains, the CLI prints
+`no se proporcionó ninguna proposición` and exits 2. Only the emptiness check
+uses the trimmed value; the scanner receives the original text. A
+whitespace-only line in interactive mode is still a harmless blank line.
+
+Alternatives: treat an unknown dash-prefixed argument as a bare proposition
+(breaks option parsing); require `--` before every proposition (needless);
+accept a whitespace-only proposition as an empty success (inconsistent with
+the empty string).
+
+Consequences: the CLI follows the option-handling convention users expect:
+`--` is the escape hatch for a leading dash, and unknown options fail before
+scanning. No valid proposition begins with `-` (negation is `!`, `¬` or `no`),
+so strictness costs nothing in practice.
+
+## ADR-025 — Parser rule failures carry the `ParseState`
+
+Status: Accepted
+
+Context: After a parse error, `parse` must call `synchronize` from the exact
+failure point. A rule that returns only an `Error` leaves the caller with the
+state from before the rule ran, which may be several tokens behind.
+
+Decision: Every parser rule returns
+`Result<(Expression, ParseState), (Error, ParseState)>`; `consume` returns
+`Result<(Token, ParseState), (Error, ParseState)>`. On failure the second
+component is the immutable state at the failing token. `parse` records the
+error, calls `synchronize` on that state, and continues with the next
+proposition. The public stage result stays `Result<List<Expression>,
+List<Error>>` (ADR-019). The `error(token, message)` helper still builds the
+`ParseError`; the rule pairs it with the state it already holds.
+
+Alternatives: synchronize from the state at the start of the proposition
+(simpler, but discards tokens already consumed inside the rule); store an
+absolute token index in the error (duplicates `current`); mutate a parser
+instance (rejected by ADR-001).
+
+Consequences: Rule signatures are heavier, and every failure path must return
+the state. Recovery resumes exactly where parsing failed, so error positions
+and the following proposition match the source.
+
+## ADR-026 — `table_simplified` is ignored when `simplify` is false
+
+Status: Accepted
+
+Context: `Orchestrator.evaluate(source, simplify, table_simplified)` is public
+and pure, but the CLI rejects `--tabla-simplificada` with `--no-simplificar`.
+A direct caller can still pass `simplify = false, table_simplified = true`, and
+the design does not define what happens; step 8 would look for a simplified
+expression that step 6 never produced.
+
+Decision: When `simplify` is false, `table_simplified` has no effect: the
+original expression is tabulated and no simplified text is produced.
+`evaluate` is total over its four argument combinations. The CLI still rejects
+the combination as a usage error, so users never reach it.
+
+Alternatives: return `Err([EvalError(...)])` (overloads the size-limit error
+with a usage problem); treat `table_simplified` as implying simplification
+(the caller's `simplify = false` is silently overridden); make the state
+unrepresentable with a two-variant type (more API churn for one internal
+caller).
+
+Consequences: Direct callers get the documented default instead of a panic or
+an ambiguous result. Tests assert that `simplify = false, table_simplified =
+true` produces the same table as `simplify = false, table_simplified = false`.
+
+## ADR-027 — Fixed precedence for usage errors
+
+Status: Accepted
+
+Context: Several usage errors can apply at once, for example
+`-i -s out.txt --tabla-simplificada --no-simplificar`. ADR-022 requires one
+outcome and one message per CLI edge case but does not say which message wins.
+
+Decision: The CLI reports exactly one usage message, the first that applies in
+this order: unknown flag, missing flag value, more than one mode, extra
+positional argument, no proposition, `--tabla-simplificada` with
+`--no-simplificar`, `-s` with `--interactivo`. The exit code is always 2.
+
+Alternatives: report the first problem encountered while scanning arguments
+left to right (the winner depends on argument order); report every usage error
+(more informative, but contradicts the one-message presentation and makes
+tests brittle).
+
+Consequences: The behavior is deterministic and testable with a table of
+argument vectors. A new usage check must be placed in the order and the order
+documented.
+
+## ADR-028 — `--` is an optional trailing separator
+
+Status: Accepted
+
+Context: ADR-024 makes `--` end option parsing and allows at most one
+positional after it, but does not say whether a trailing `--` is an error or
+whether `--` can be consumed as a flag value.
+
+Decision: `--` is always a separator, never an option value. It may be
+trailing when a proposition already exists: `plogic -p p --` is valid.
+`plogic --` alone has no proposition and is a usage error. `plogic -p -- p`
+fails with `falta el valor de '-p'`, because `--` is not the value of `-p`.
+Two positionals after `--` are an extra-positional usage error.
+
+Alternatives: require a positional after `--` (rejects a harmless trailing
+separator); allow `--` only before a bare proposition (inconsistent with
+ordinary option parsing).
+
+Consequences: The rule matches conventional option parsing and gives one
+deterministic reading. A proposition that is literally `--` cannot be passed;
+the language has no such token, so nothing is lost.
+
+## ADR-029 — Blank lines separate the presented sections
+
+Status: Accepted
+
+Context: The README example prints a blank line after the `Simplificada:`
+line, after the table and before the classification, but ui.md did not define
+separators, so two implementations could both claim to follow the design.
+
+Decision: `present` prints one blank line between the printed items: after
+the simplified line, after the table, and before the classification. With
+`--no-simplificar` only the separator between the table and the classification
+remains.
+
+Alternatives: no blank lines (denser, but the classification runs into the
+table); a blank line only before the classification (the simplified line sits
+directly above the table).
+
+Consequences: Output is stable for golden tests and matches the README.
+Presentation code emits separators explicitly, including when the simplified
+line is absent.
+
+## Errata
+
+- ADR-001 lists `Orchestrator.evaluate(source, simplify)`; the signature gained
+  `table_simplified` in ADR-017 and the stage result carries `List<Error>` per
+  ADR-019. Its "nothing is constructed" means no stage is constructed; AST nodes
+  and `TruthTable` are immutable values.
+- ADR-001's "the diagrams show no constructors" means no stage constructors;
+  `<<create>>` marks creation of immutable AST, `Error` and `TruthTable` values.
+- ADR-002's "every fallible operation returns `Result<T>`; failure is
+  `Err(List<Error>)`" is refined by ADR-019: stage entry points carry lists,
+  internal helpers carry one `Error`. Parser rules are the exception: they carry
+  the `ParseState` with the error (ADR-025), and `TokenType.map` carries a
+  message string.
+- ADR-019's "parser rules are the main case" of one-error helpers is superseded
+  by ADR-025: parser rules now return `Result<T, (Error, ParseState)>` so
+  synchronization resumes from the failing token. Stage results still carry
+  `List<Error>`.
+- ADR-007's context says the reduced formula has "fewer connectives"; ADR-023
+  clarifies that the guarantee is a lower weight, not a lower connective count.
+- ADR-009's context writes `!p and not q ∧ V`; `and` and `not` are not accepted
+  spellings. The intended example is `!p & ¬q ∧ V`.
+- ADR-009's "only the parentheses precedence requires" also covers
+  associativity: the left child of `->` at equal precedence is parenthesized,
+  so `(p -> q) -> r` keeps its parentheses while `p -> (q -> r)` does not.
+- ADR-011's "at most 12 variables are accepted" applies to the expression chosen
+  for the table; ADR-017 lets a 13-variable original be tabulated when
+  `--tabla-simplificada` selects a simplified form with at most 12 variables.
+- ADR-003 and ADR-006 write `Result<T>` as shorthand for `Result<T, List<Error>>`
+  (ADR-019); `TokenType.map` is the exception, `Result<TokenType, str>`.
+- ADR-011 writes `Err(EvalError(...))` as shorthand; stage results carry a
+  list, so the form is `Err([EvalError(...)])` (ADR-019). Its "batch run" scope
+  for the 1024-row redirect is widened by ADR-022 to every non-interactive run.
+- ADR-012's lower-case rule covers error messages and prompts; the labels
+  `Simplificada:` and `Esta proposición...` keep their capital initial
+  (ADR-021).
+- ADR-012 and ADR-013 list the flags without `--tabla-simplificada`; the flag
+  surface was extended by ADR-017, and its conflicts and strict usage rules are
+  in ADR-022.
+- ADR-013's "bare argument with no flag" means no mode flag; modifiers may
+  accompany it. Its `plogic ->` example is superseded by ADR-024: every
+  dash-prefixed argument is an option, so that command is an unknown-flag error
+  unless it appears after `--`.
+- ADR-023's "strictly lower weight" applies whenever a rewrite fires; at a fixed
+  point with no applicable rewrite the weight is equal, so the guarantee is
+  "never greater, strictly lower when a rewrite applies".
+- ADR-022's one-message rule for usage errors gains the fixed precedence of
+  ADR-027: unknown flag, missing value, more than one mode, extra positional,
+  no proposition, the two conflicts.
+- ADR-024's "at most one positional after `--`" is refined by ADR-028: `--` may
+  be trailing, it is never a flag value, and `plogic -p p --` is valid.

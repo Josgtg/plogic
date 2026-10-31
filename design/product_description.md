@@ -15,7 +15,8 @@ by Robert Nystrom, implementing a functional programming style rather than pure 
 - Evaluating a file, with one proposition per line.
 - Interactive mode: write a proposition and get its truth table immediately.
 - Simplifying a proposition.
-- Producing the truth table of each proposition.
+- Producing the truth table of each proposition, optionally from its
+  simplified form.
 - Writing the output to a file — on request, or automatically when a truth
   table is long.
 - Spanish UI.
@@ -42,10 +43,15 @@ Plogic displays it as:
 
 Whatever the spelling, the display is normalized: formal symbols, `V` / `F`
 literals and the operand order the user wrote. Parentheses are kept only
-where precedence requires them, so the example above needs none: it parses
-exactly as it reads. When grouping does matter they appear — `(p o q) y r`
-displays as `(p ∨ q) ∧ r`, because without them `∧` would bind to `q` first.
-
+where precedence or associativity requires them, so the example above needs
+none: it parses exactly as it reads. When grouping does matter they appear —
+`(p o q) y r` displays as `(p ∨ q) ∧ r`, because without them `∧` would bind
+to `q` first; `(p -> q) -> r` keeps its parentheses, while `p -> (q -> r)`
+prints as `p → q → r`, because implication is right-associative. The result
+column keeps the operand order the user wrote; the optional `Simplificada:`
+line shows the simplified formula in canonical order (see simplifier.md).
+With `--tabla-simplificada` the result column is labelled with the simplified
+formula instead, and the `Simplificada:` line repeats it.
 
 In this project, a proposition is composed of literals, connectives and
 identifiers:
@@ -54,8 +60,13 @@ identifiers:
   one of the four spellings `0`, `1`, `F`, `V`. `0` and `F` mean false;
   `1` and `V` mean true.
 - An **identifier** is a propositional variable: a name such as `p`, `q`, `s`
-  or `t` that stands for an arbitrary truth value. The truth table assigns
-  every combination of values to the variables that appear in the proposition.
+  or `t` that stands for an arbitrary truth value. An identifier starts with
+  an ASCII letter (`a`–`z`, `A`–`Z`) and continues with ASCII letters or
+  digits; names are case-sensitive, so `P` and `p` are different variables.
+  The words used as connectives (`no`, `y`, `o`, `entonces`, `sisolosi`) and
+  the literals `V` and `F` are reserved and cannot be identifiers. The truth
+  table assigns every combination of values to the variables that appear in
+  the expression being tabulated.
 - A **connective** (operator) combines one or more propositions into a larger
   one. Each connective can be written as a symbol or as a word. The supported
   connectives are:
@@ -103,15 +114,25 @@ for the proposition itself. For example, `p -> q` produces:
 
 A proposition whose column contains only `V` is a **tautology**; one whose
 column contains only `F` is a **contradiction**; anything else is a
-**contingency**.
+**contingency**. Plogic always reports the classification.
+
+The variables, rows and 4096-row limit come from the expression being
+tabulated. By default that is the original proposition; `--tabla-simplificada`
+tabulates the simplified expression instead, so the columns can shrink (a
+formula that simplifies to `V` or `F` has no variable columns at all).
 
 ## Simplification
 
-Before evaluation, Plogic by default simplifies the proposition (can be turned off) using the laws of
-Boolean algebra, such as De Morgan's laws, double negation, idempotence,
-absorption, identity (`p & V ≡ p`), domination (`p & F ≡ F`) and
-distributivity. Simplification is an equivalence transformation: the reduced
-formula has the same truth table as the original, but fewer connectives.
+Before evaluation, Plogic by default simplifies the proposition (can be turned
+off with `--no-simplificar`) using the laws of Boolean algebra, such as De
+Morgan's laws, double negation, idempotence, absorption, identity
+(`p & V ≡ p`), domination (`p & F ≡ F`) and distributivity. Simplification is
+an equivalence transformation: the reduced formula has the same truth table
+as the original and no greater weight, strictly lower whenever a rewrite
+applies, though not necessarily fewer connectives (De Morgan and the
+biconditional expansion can add some). By default the truth table is built
+from the original proposition and the reduced formula is shown for reference;
+`--tabla-simplificada` builds the table from the reduced formula instead.
 
 ## Errors
 

@@ -6,8 +6,8 @@ Everything downstream works on tokens.
 
 ## Entry point and state
 
-- `Scanner.scan(source: str): Result<List<Token>>` — a static entry point;
-  the scanner is never constructed and holds no state.
+- `Scanner.scan(source: str): Result<List<Token>, List<Error>>` — a static
+  entry point; the scanner is never constructed and holds no state.
 - The immutable `ScanState { source, token_start, current, line, tokens,
   errors }` is threaded through the private helpers (`scan_token`, `match`,
   `peek`, `peek_next`, `is_at_end`, `advance`, `add_token`) and returned
@@ -25,7 +25,8 @@ For each character or lexeme at the current position:
   the scanner maps them through `TokenType.map` to their kind. The formal
   symbols take several bytes in UTF-8 but are one character each: the
   scanner advances character by character, so a symbol never splits and
-  `col` counts it as one position.
+  `col` counts it as one position. When `map` returns `Err(message)`, the
+  scanner records `ScanError(line, col, message)` at the token start.
 - `-` must be followed by `>` (the lexeme `->`); otherwise `ScanError`:
   `se esperaba '>' después de '-'`.
 - `<` must be followed by `->` (the lexeme `<->`); otherwise `ScanError`:
@@ -49,7 +50,8 @@ symbols and words together with no difference downstream.
 - `line` is 1-based and increments at each line break.
 - `col` is 1-based and computed when a token is added: the number of
   characters between the last line break and `token_start`. `ScanState`
-  needs no column field; it is derived from `source` and `token_start`.
+  needs no column field; it is derived from `source` and `token_start`. A
+  tab counts as one character, even though an editor may display it wider.
 
 ## Errors
 
@@ -59,7 +61,8 @@ character or run, and keeps scanning.
 
 At the end of the pass, `scan` decides the stage result:
 
-- any error recorded → `Err(errors)`; the partial token list is discarded;
+- any error recorded → `Err(errors)`, a non-empty `List<Error>`; the partial
+  token list is discarded;
 - otherwise → `Ok(tokens)`.
 
 This is a stage gate (see error_handling.md): when scanning fails, the

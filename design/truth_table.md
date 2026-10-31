@@ -1,27 +1,37 @@
 # Plogic - TruthTable design
 
 Role: the result for one proposition: every truth assignment and the
-proposition's value under it. The Interpreter creates it; the UI presents
-it. Nothing in it can fail.
+proposition's value under it. The Interpreter creates the table with its
+variables and rows; the Orchestrator adds the display text through
+`with_display`; the UI presents it. Nothing in it can fail.
 
 ## Contents
 
-- The ordered variable names — one column per distinct variable, in order
-  of first appearance.
+- The ordered variable names — one column per distinct variable of the
+  evaluated expression (the original by default, the simplified one with
+  `--tabla-simplificada`), in order of first appearance.
 - The rows — one per truth assignment (2^n), each holding the variables'
-  values (in column order) and the proposition's value.
-- The display text of the evaluated proposition, labelling the result
-  column: the normalized form (see below), in the operand order the user
-  wrote.
+  values (in column order) and the value of the evaluated expression.
+- The display text of the evaluated expression, labelling the result
+  column: the normalized form (see below). It keeps the operand order the
+  user wrote when the table is the original, and the canonical order when
+  the table is the simplified formula.
 - Optionally, present only when the Simplifier ran: the display text of
-  the simplified formula, in canonical operand order.
+  the simplified formula, in canonical operand order. With
+  `--tabla-simplificada` it repeats the result-column label.
+
+`with_display(label: str, simplified: str?): TruthTable` returns a new table
+with the two display fields set; the Interpreter's table starts with them
+empty. There are no setters (ADR-020).
 
 There is a single display form. It is infix, with the connectives `¬`,
 `∧`, `∨`, `→`, `↔`, the literals `V` and `F`, and parentheses only where
-precedence requires (see tokens.md). How the user spelled the proposition
-(`y`, `no`, `0`, `->`) never shows. The label keeps the order and
-grouping the user wrote; the simplified formula comes out in the canonical
-order of the Simplifier (see simplifier.md). Both texts are produced by
+precedence or associativity requires (see tokens.md). How the user spelled
+the proposition (`y`, `no`, `0`, `->`) never shows. The label of the original
+proposition keeps the order and grouping the user wrote; the simplified
+formula comes out in the canonical order of the Simplifier (see
+simplifier.md). With `--tabla-simplificada` the label is the simplified
+formula, so it uses canonical order too. Both texts are produced by
 `InfixPrinter` (see ui.md).
 
 ## Layout
@@ -48,4 +58,5 @@ result column:
 - anything else → `Contingency`
 
 The classification is exact: it reads the column, not the simplified
-formula. Whether it is shown to the user is decided at presentation time.
+formula. It is always shown, in every mode and with or without
+simplification (ADR-021).
