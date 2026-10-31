@@ -7,6 +7,8 @@ mod error;
 #[allow(dead_code)]
 mod expression;
 #[allow(dead_code)]
+mod interpreter;
+#[allow(dead_code)]
 mod parser;
 #[allow(dead_code)]
 mod scanner;
@@ -14,6 +16,8 @@ mod scanner;
 mod simplifier;
 #[allow(dead_code)]
 mod tokens;
+#[allow(dead_code)]
+mod truth_table;
 
 use std::ffi::OsString;
 
