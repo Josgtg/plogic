@@ -84,8 +84,10 @@ impl Eq for Expression {}
 /// verify the tree. Its parentheses never depend on precedence; a `Grouping`
 /// prints as `(group …)`, the way the book's printer does, so redundant
 /// parentheses in the source stay visible.
+#[allow(dead_code)] // A verification aid, exercised by the tests only.
 pub struct ASTPrinter;
 
+#[allow(dead_code)] // A verification aid, exercised by the tests only.
 impl ASTPrinter {
     /// The prefix rendering of `expression`, e.g. `(∧ (¬ p) q)`.
     pub fn print(expression: &Expression) -> String {
