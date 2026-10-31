@@ -4,6 +4,8 @@ mod cli;
 #[allow(dead_code)]
 mod error;
 #[allow(dead_code)]
+mod expression;
+#[allow(dead_code)]
 mod scanner;
 #[allow(dead_code)]
 mod tokens;
