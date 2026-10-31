@@ -61,8 +61,9 @@ identifiers:
   `1` and `V` mean true.
 - An **identifier** is a propositional variable: a name such as `p`, `q`, `s`
   or `t` that stands for an arbitrary truth value. An identifier starts with
-  an ASCII letter (`a`–`z`, `A`–`Z`) and continues with ASCII letters or
-  digits; names are case-sensitive, so `P` and `p` are different variables.
+  an ASCII letter (`a`–`z`, `A`–`Z`) and continues with ASCII letters,
+  digits or underscores; an underscore never starts one, so `_p` is invalid.
+  Names are case-sensitive, so `P` and `p` are different variables.
   The words used as connectives (`no`, `y`, `o`, `entonces`, `sisolosi`) and
   the literals `V` and `F` are reserved and cannot be identifiers. The truth
   table assigns every combination of values to the variables that appear in

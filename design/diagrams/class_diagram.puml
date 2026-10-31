@@ -103,6 +103,8 @@ enum Error {
   ScanError(line: int, col: int, message: str)
   ParseError(line: int, col: int, message: str)
   EvalError(message: str)
+  --
+  +to_string(): str
 }
 
 class Simplifier {

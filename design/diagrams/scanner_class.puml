@@ -42,27 +42,32 @@ class ScanState {
 class Scanner {
   +{static} scan(source: str): Result<List<Token>, List<Error>>
   -{static} scan_token(state: ScanState): ScanState
-  -{static} match(state: ScanState, expected: char): (bool, ScanState)
-  -{static} peek(state: ScanState): char
-  -{static} peek_next(state: ScanState): char
+  -{static} match_char(state: ScanState, expected: char): (bool, ScanState)
+  -{static} peek(state: ScanState): char option
+  -{static} peek_next(state: ScanState): char option
   -{static} is_at_end(state: ScanState): bool
-  -{static} advance(state: ScanState): (char, ScanState)
-  -{static} add_token(state: ScanState, type: TokenType): ScanState
+  -{static} advance(state: ScanState): ScanState
+  -{static} add_token(state: ScanState, kind: TokenType): ScanState
 }
 
 enum Error {
   ScanError(line: int, col: int, message: str)
   ParseError(line: int, col: int, message: str)
   EvalError(message: str)
+  --
+  +to_string(): str
 }
 
 note bottom of Scanner
   Pure and never constructed: the immutable ScanState
   is threaded through every helper and returned anew.
+  The state owns the source, so no helper carries a
+  lifetime; the text is dropped with the state.
 
   Character handling:
   - spaces and tabs separate lexemes;
   - LF or CRLF emits Newline and advances line;
+    a lone CR is an invalid character;
   - ! ¬ & ∧ | ∨ → ↔ are single-character lexemes;
   - -> and <-> are the only multi-character ones;
   - digit runs map to Literal(false) / Literal(true),

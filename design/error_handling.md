@@ -42,6 +42,10 @@ point at the offending character (scan) or token (parse); the message is
 lower-case and says what was expected. `EvalError` is about size, not
 position, so it carries no `line`/`col`.
 
+`Error` implements `Display`, and that line is the user-facing report of the
+next section, so the Spanish wording lives in one place: `Orchestrator.report`
+is a thin wrapper over `error.to_string()` (ADR-037).
+
 ## Where errors come from
 
 | Stage | Example messages |
@@ -85,7 +89,8 @@ Consequences:
 
 ## Reporting
 
-`Orchestrator.report(error: Error): str` is a pure formatter:
+`Orchestrator.report(error: Error): str` returns the error's `Display`
+(ADR-037):
 
 ```
 línea {line}, columna {col}: {message}

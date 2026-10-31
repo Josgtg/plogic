@@ -24,16 +24,22 @@ invocation per case). Level 7 covers the product examples end to end.
   `-` or `<` (both are errors).
 - Positions: `line` / `col` on the first line, after a newline, after a
   multi-byte symbol (a formal symbol counts as one column), and after a tab
-  (also one column).
+  (also one column); a `Newline` token carries the line it ends.
 - Line breaks: LF, CRLF counted as one, blank lines producing a bare
-  `Newline`, and `Eof` appended at the end.
+  `Newline`, and `Eof` appended just past the last character, with no final
+  `Newline` when the source does not end with one. A lone CR (not followed by
+  LF) is not a line break but a `carácter inválido` error (ADR-038).
 - Identifiers are case-sensitive: `p` and `P` are different variables, and
   lowercase `v` / `f` are identifiers, not literals. `V` / `F` are literals.
+  An underscore continues an identifier (`p_1`, `a_b`) but never starts one,
+  so `_p` and bare `_` are `carácter inválido '_'` errors (ADR-039).
 - Error recovery: `p % q % r` records two errors — at columns 3 and 7 — and keeps
   scanning internally; `scan` still returns the whole stage `Err` and discards
   the partial token list. A run of digits like `12` is one `literal inválido '12'`
   error.
 - Non-ASCII outside a literal or word (`ñ`, `ä`, `_`) is `carácter inválido`.
+- Errors report the line they happen on: a bad character after a line break
+  is `línea 2, columna 1: …`.
 
 ## 2. Parser
 

@@ -88,8 +88,9 @@ Two consequences worth spelling out:
   `Literal(false)`. Nothing keeps the spelling: every display shows
   literals as `V` and `F`.
 - An identifier is an ASCII letter (`a`–`z`, `A`–`Z`) followed by ASCII
-  letters or digits: `p`, `q`, `s`, `t`, `p1`. Identifiers are
-  case-sensitive: `P` and `p` are different variables.
+  letters, digits or underscores: `p`, `q`, `s`, `t`, `p1`, `p_1`. An
+  underscore never starts an identifier, so `_p` is an invalid character.
+  Identifiers are case-sensitive: `P` and `p` are different variables.
 
 ## Newline and Eof
 

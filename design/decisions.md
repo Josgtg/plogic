@@ -48,6 +48,8 @@ ADR-nnn`.
 | 034 | Usage errors print the message and the full help screen | Accepted |
 | 035 | Errors are bright red on a terminal | Accepted |
 | 036 | Token vocabulary details settled in implementation | Accepted |
+| 037 | The error type displays as its report line | Accepted |
+| 038 | The scanner owns the source; a lone CR is invalid | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -891,6 +893,93 @@ reads).
 Consequences: the scanner has no message table of its own, the tokens that can
 never appear in a formula print as nothing, and every later stage reads a token
 by field. Tests assert the exact `map` messages and the display of every kind.
+
+## ADR-037 — The error type displays as its report line
+
+Status: Accepted
+
+Context: Two documents described the same user-facing line from different
+places: `error_handling.md` gave `Orchestrator.report` the format
+`línea {line}, columna {col}: {message}`, while `AGENTS.md` said `thiserror`
+derives `Display` for the typed `Error` enum. Left alone, the format would live
+twice and could drift.
+
+Decision: `Error` derives `thiserror::Error`. The two positioned variants print
+`línea {line}, columna {col}: {message}`; `EvalError` prints its message alone.
+That is exactly the report line, so `Orchestrator.report(error)` returns
+`error.to_string()` and the Spanish wording lives in one place. The variant
+names keep the `Error` suffix that clippy dislikes (`ScanError`, `ParseError`,
+`EvalError`): each names the stage that produced it, and the allow is local to
+the enum.
+
+Alternatives: `Display` rendering the bare message and `report` composing the
+prefix (two places know the format); no `Display` until the orchestrator lands
+(`thiserror` unused, but the enum's text would still be composed later).
+
+Consequences: the CLI prints `report`, which is the enum's `Display`; tests
+assert the exact line for a positioned error and for a size error, and the
+prefix is never duplicated.
+
+## ADR-038 — The scanner owns the source; a lone CR is invalid
+
+Status: Accepted
+
+Context: `scanner.md` writes `ScanState { source, … }` and
+`Scanner.scan(source)` without deciding whether the state borrows the text, and
+in Rust that choice shows in every signature: a borrowed source puts a lifetime
+parameter on the state and on each helper. Nothing after scanning needs the raw
+text — the table is labelled from the parsed expression and each error carries
+its own message — and the scanner is pure, so it cannot keep the text either.
+The document also defined a line break as "LF, or CRLF counted as one" and said
+nothing about a CR on its own.
+
+Decision: `ScanState` owns the source and `Scanner.scan` takes it by value; the
+state and every helper carry no lifetime, and the text is dropped with the
+state. A carriage return not followed by LF is not a line break: it is a
+`carácter inválido` error, so only LF and CRLF end a line. Alongside them, the
+helpers follow idiomatic Rust without changing the algorithm: `match` becomes
+`match_char` (a Rust keyword), `peek` and `peek_next` return an optional
+character instead of the book's `\0` sentinel, `advance` returns the new state,
+and `add_token` takes the kind. A `Newline` token carries the line it ends.
+
+Alternatives: borrow the source (no copy, lifetimes on the state and helpers);
+take `&str` and clone inside (ownership without the lifetime, one copy per
+scan); take the string by value (chosen: no copy, no lifetime, and the caller
+has nothing else to do with the text). For a lone CR: treat it as a break to
+tolerate old Mac files, or reject it so the only line breaks are the ones
+`product_description.md` defines (chosen).
+
+Consequences: `scan` consumes its argument, so the orchestrator passes the text
+along instead of lending it; tests call `scan(source.to_string())`. A file with
+CR line endings fails on its first line rather than being silently accepted.
+
+## ADR-039 — An underscore continues an identifier but never starts one
+
+Status: Accepted
+
+Context: `product_description.md`, `tokens.md` and `scanner.md` defined an
+identifier as an ASCII letter followed by ASCII letters or digits, so a name
+such as `p_1` was a `carácter inválido '_'` error and only `p1` could be
+written. Longer propositions are easier to read when a name can group its
+parts, and `_` is the conventional separator for that.
+
+Decision: an underscore is part of an identifier but cannot start one. A word
+begins at an ASCII letter and continues over ASCII letters, digits and
+underscores, so `p_1`, `a_b` and `p__q` are identifiers while `_p` and a bare
+`_` stay `carácter inválido '_'` errors. The reserved spellings are unaffected:
+`V`/`F`/`no`/`y`/`o`/`entonces`/`sisolosi` are still matched whole by `map`,
+and no spelling contains an underscore.
+
+Alternatives: allow `_` as the first character too (`_p` and `_` become
+variables); restrict it to a single separator between letter/digit runs;
+reject underscores and keep `p1` as the only form. Allowing it to start a name
+would make `_` a one-character variable and has no payoff for readability.
+
+Consequences: the scanner's word predicate is `is_ascii_alphanumeric() || c ==
+'_'`; the start-of-word condition is unchanged, so the character-dispatch
+match still treats `_` as an invalid character. The error-message rule of
+ADR-036 is untouched — `_` in a non-word position is still
+`carácter inválido '_'`.
 
 ## Errata
 
