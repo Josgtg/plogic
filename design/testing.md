@@ -8,10 +8,18 @@ Levels 1–5 test the pure core and live next to the code (`#[cfg(test)]`
 modules). Level 6 tests the CLI as a process (integration tests, one binary
 invocation per case). Level 7 covers the product examples end to end.
 
-## 1. Scanner
+## 1. Tokens and scanner
 
-- One case per spelling of `TokenType.map`, including `¬`, `∧`, `∨`, `→`, `↔`
-  and both spellings of every literal.
+- Tokens, spellings: one case per spelling of `TokenType.map`, including `¬`,
+  `∧`, `∨`, `→`, `↔` and both spellings of every literal; `map` is
+  case-sensitive (`V` is a literal, `v` is not) and never produces an
+  identifier, a `Newline` or an `Eof`.
+- Tokens, errors: the message is chosen by the lexeme's shape — `12` gives
+  `literal inválido '12'`, `%` gives `carácter inválido '%'` (ADR-036).
+- Tokens, display: every kind renders its normalized spelling (`¬`, `∧`, `∨`,
+  `→`, `↔`, `V`, `F`, `(`, `)`), an identifier renders its own name, and
+  `Newline` / `Eof` render as the empty string; `Token::to_string()` equals its
+  kind's.
 - Multi-character lexemes: `->` and `<->` with and without spaces, and a lone
   `-` or `<` (both are errors).
 - Positions: `line` / `col` on the first line, after a newline, after a

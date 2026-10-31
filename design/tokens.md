@@ -8,16 +8,21 @@ structural tokens.
 
 ## Token
 
-A token is `Token { type: TokenType, line: int, col: int }` with a
-`to_string()` method:
+A token is `Token { kind: TokenType, line: int, col: int }` with a
+`to_string()` method (`Display` in Rust):
 
-- `type` is the kind, including its payload (see below).
+- `kind` is the kind, including its payload (see below). The field is called
+  `kind` because `type` is a Rust keyword.
+- `kind`, `line` and `col` are public: a token is plain data, read directly by
+  every later stage.
 - `line` and `col` are 1-based and point at the first character of the
   token (for `Eof`, the position just past the end of the source).
 - `to_string()` renders the token's display spelling — the normalized
-  symbols `¬`, `∧`, `∨`, `→`, `↔`, the literals `V` / `F`, or the
-  identifier's name. It is used by `ASTPrinter`, `InfixPrinter` and by
-  diagnostics.
+  symbols `¬`, `∧`, `∨`, `→`, `↔`, the literals `V` / `F`, the parentheses
+  `(` / `)`, or the identifier's name. It is used by `ASTPrinter`,
+  `InfixPrinter` and by diagnostics. `TokenType` renders the same spelling and
+  a token delegates to its kind. `Newline` and `Eof` are structural: they have
+  no spelling and render as the empty string (ADR-036).
 
 The token does not keep the source spelling of a connective or a literal;
 identifiers keep their name. A proposition is displayed in one normalized
@@ -61,9 +66,13 @@ to their kind:
 | `LeftParen`, `RightParen` | `(` `)` |
 
 `map` returns `Err(message)` for any other lexeme, where the message says what
-was expected. The scanner then decides what to do with it: a word-shaped
-lexeme becomes `Identifier(lexeme)`, anything else is a `ScanError` with the
-message attached to the token's position (see scanner.md).
+was expected and is decided by the lexeme's shape: a run of digits gives
+`literal inválido '<lexeme>'`, anything else gives
+`carácter inválido '<lexeme>'`. The text is composed in `map`, so the scanner
+never builds one of its own (ADR-036). The scanner then decides what to do with
+the result: a word-shaped lexeme that is not in the table becomes
+`Identifier(lexeme)`, anything else is a `ScanError` carrying `map`'s message at
+the token's position (see scanner.md).
 
 Two consequences worth spelling out:
 

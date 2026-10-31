@@ -23,9 +23,9 @@ enum TokenType {
 }
 
 class Token {
-  -type: TokenType
-  -line: int
-  -col: int
+  +kind: TokenType
+  +line: int
+  +col: int
   --
   +to_string(): str
 }

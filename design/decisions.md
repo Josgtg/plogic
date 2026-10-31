@@ -47,6 +47,7 @@ ADR-nnn`.
 | 033 | The parser handles help and version, in argument order | Accepted |
 | 034 | Usage errors print the message and the full help screen | Accepted |
 | 035 | Errors are bright red on a terminal | Accepted |
+| 036 | Token vocabulary details settled in implementation | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -863,6 +864,33 @@ Consequences: `colored` now covers errors as well as the table cells, and the
 choice depends on the destination stream rather than on the program. Tests
 assert the layout with and without the escapes; the terminal check itself is
 not automated.
+
+## ADR-036 — Token vocabulary details settled in implementation
+
+Status: Accepted
+
+Context: `tokens.md` fixes the vocabulary, the spellings and the `map` contract
+but leaves three details open: who composes the text of `map`'s `Err(message)`
+("the message says what was expected"), what `to_string()` renders for the two
+structural kinds, and how a token exposes its three fields.
+
+Decision: `TokenType.map` composes the message from the lexeme's shape — a run
+of digits gives `literal inválido '<lexeme>'`, anything else gives
+`carácter inválido '<lexeme>'` — and the scanner records it unchanged. The
+display spelling is `Display` on `TokenType`, with `Token` delegating to its
+kind; `Newline` and `Eof` have no spelling and render as the empty string.
+`Token` is plain data with public `kind`, `line` and `col` (`kind` because
+`type` is a Rust keyword).
+
+Alternatives: `map` returning a neutral message that the scanner rewrites into
+the literal/character one (two places would know about lexeme shapes); Spanish
+words such as `nueva línea` for the structural kinds (text the design never
+promises); private fields with accessors (boilerplate for a record every stage
+reads).
+
+Consequences: the scanner has no message table of its own, the tokens that can
+never appear in a formula print as nothing, and every later stage reads a token
+by field. Tests assert the exact `map` messages and the display of every kind.
 
 ## Errata
 
