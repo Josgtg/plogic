@@ -123,7 +123,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/simplifier.rs` | the simplifier: canonical rewrites to an equivalent expression |
 | `src/interpreter.rs` | the interpreter: evaluation and truth-table construction |
 | `src/truth_table.rs` | the `TruthTable`, `Row` and `Classification` result types |
-| `src/orchestrator.rs` | the pipeline driver: `evaluate` and `report` |
+| `src/orchestrator.rs` | the pipeline driver: `evaluate`, `simplify` and `report` |
 | `src/cli.rs` | the UI/CLI: I/O, presentation, error colors |
 | `src/args.rs` | argument parsing: `Args`, `parse`, `Config` and `UsageError` |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |

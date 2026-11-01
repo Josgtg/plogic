@@ -38,10 +38,10 @@ Three modes, chosen by flag. A bare argument is evaluated as a single propositio
 Modifiers:
 
 - `--no-simplificar` — skip simplification and omit the `Simplificada:` line; the table
-  still evaluates the original proposition.
-- `--tabla-simplificada` — build the truth table from the simplified formula instead of
-  the original. It is long-only and cannot be combined with `--no-simplificar`.
-- `-s`, `--salida <path>` — write the output to a file instead of the console.
+  evaluates the original proposition.
+- `-s`, `--simplificar` — simplify and print only the `Simplificada:` formula, with no
+  truth table and no classification. It cannot be combined with `--no-simplificar`.
+- `-o`, `--salida <path>` — write the output to a file instead of the console.
 
 `-h` / `--help` prints the help screen on stdout and exits 0: the usage line
 `uso: plogic [opciones] [proposición]` followed by every argument, generated from the
@@ -50,7 +50,8 @@ parser prints them when it reaches them, so `plogic --help -x` shows the help bu
 `plogic -x --help` is an unknown-flag error, and `plogic -- --help` evaluates the
 proposition `--help`.
 
-`-s` cannot be combined with `--interactivo`. With no proposition at all (including a
+`-o` cannot be combined with `--interactivo`, and `-s` cannot be combined with
+`--no-simplificar`. With no proposition at all (including a
 modifier-only invocation), more than one mode flag, an unknown flag, a missing flag
 value, an extra positional argument, or a single proposition that is empty after
 trimming, plogic prints the reason followed by the full help screen and exits with code
@@ -68,14 +69,16 @@ ignore.
 plogic 'p -> q'
 plogic --proposicion '(p o q) y no r'
 plogic --archivo proposiciones.txt --no-simplificar
-plogic --archivo proposiciones.txt --tabla-simplificada --salida resultados.txt
+plogic --archivo proposiciones.txt --no-simplificar
+plogic --archivo proposiciones.txt --simplificar --salida resultados.txt
 plogic --interactivo
 plogic --help
 ```
 
 In interactive mode each line is evaluated on its own and presented immediately; a bad
 line reports its errors without ending the session, and `exit`, `salir` or Ctrl-D ends
-it. Both modifiers apply to every line, but using them together is a usage error.
+it. `--no-simplificar` and `--simplificar` apply to every line, but using them together
+is a usage error.
 
 ## The language
 
@@ -108,24 +111,25 @@ A proposition ends at the end of its line: multi-line propositions are not suppo
 
 Every formula is displayed in one normalized form: `¬`, `∧`, `∨`, `→`, `↔`, the literals
 `V` and `F`, and only the parentheses precedence or associativity requires. By default
-the result-column label keeps the order and grouping the proposition was written in,
-with redundant parentheses removed; the `Simplificada:` line always uses the canonical
-order. With `--tabla-simplificada` the label is the simplified formula too.
+the result-column label is the simplified formula in canonical order, and the
+`Simplificada:` line repeats it. With `--no-simplificar` the label keeps the order and
+grouping the proposition was written in, with redundant parentheses removed, and the
+`Simplificada:` line is omitted.
 
-By default the table evaluates the original proposition, and the simplified formula is
-shown only as a reference. With `--tabla-simplificada` the table evaluates the simplified
-formula instead: its variables, rows, size check and label all come from it, and the
-`Simplificada:` line repeats that label. The classification is printed in every case.
+By default the table evaluates the simplified formula: its variables, rows, size check
+and label all come from it. With `--no-simplificar` the table evaluates the original
+proposition instead. The classification is printed in every case. With
+`-s` / `--simplificar` only the simplified formula is printed, with no table.
 
 `plogic 'p -> q'` prints:
 
 ```
 Simplificada: q ∨ ¬p
 
-p  q  | p → q
+q  p  | q ∨ ¬p
 F  F  | V
-F  V  | V
-V  F  | F
+F  V  | F
+V  F  | V
 V  V  | V
 
 Esta proposición es una contingencia.
@@ -147,9 +151,10 @@ the formulas, the label, the classification or the help screen — and output wr
 file is plain text.
 
 Truth tables go to stdout and errors to stderr. Output moves to a file in two cases:
-with `-s`, or automatically to `plogic-output.txt` when any table of a non-interactive
-run has more than 1024 rows (the user is notified on stderr). `-s` wins over the
-automatic file name. Interactive sessions always print to the console. A table of more
+with `-o`, or automatically to `plogic-output.txt` when any table of a non-interactive
+run has more than 1024 rows (the user is notified on stderr). `-o` wins over the
+automatic file name. Interactive sessions always print to the console, and
+`--simplificar` never redirects. A table of more
 than 4096 rows is refused: 13 or more variables in the evaluated expression is an error,
 so at most 12 variables are accepted.
 
