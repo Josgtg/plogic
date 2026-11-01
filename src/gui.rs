@@ -602,16 +602,17 @@ fn process_list(ui: &mut egui::Ui, original: &str, steps: &[Step]) {
                     .monospace()
                     .size(14.0),
             );
-            ui.label(
-                egui::RichText::new(expression)
-                    .monospace()
-                    .size(14.0),
-            );
+            ui.label(egui::RichText::new(expression).monospace().size(14.0));
         });
     }
-    add_list_item(ui, 0, "Original", &original);
+    add_list_item(ui, 0, "Original", original);
     for (index, step) in steps.iter().enumerate() {
-        add_list_item(ui, index + 1, step.rule.label(), &step.expression.infix_str());
+        add_list_item(
+            ui,
+            index + 1,
+            step.rule.label(),
+            &step.expression.infix_str(),
+        );
     }
 }
 
