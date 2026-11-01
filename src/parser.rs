@@ -100,7 +100,10 @@ fn proposition(state: ParseState) -> RuleResult {
     }
 
     let token = peek(&next);
-    Err((error(token, "se esperaba el fin de la proposición"), next))
+    Err((
+        operator_error(token, "se esperaba el fin de la proposición"),
+        next,
+    ))
 }
 
 /// `expression -> biconditional`.
@@ -258,7 +261,7 @@ fn consume(
     let (token, state) = match_token(state, predicate);
     match token {
         Some(token) => Ok((token, state)),
-        None => Err((error(peek(&state), message), state)),
+        None => Err((operator_error(peek(&state), message), state)),
     }
 }
 
@@ -292,6 +295,23 @@ fn advance(state: ParseState) -> (Token, ParseState) {
         state.current
     };
     (token, ParseState { current, ..state })
+}
+
+/// The `ParseError` for a token found where an operator belongs.
+///
+/// `v` is a common mistyping for the disjunction, but it scans as a variable
+/// name, so the parser sees it as a leftover token. It gets a message that
+/// says it is not an operator and lists the accepted spellings (ADR-050);
+/// every other token keeps the caller's message.
+fn operator_error(token: &Token, message: &str) -> Error {
+    if matches!(&token.kind, TokenType::Identifier(name) if name == "v") {
+        error(
+            token,
+            "'v' no es un operador; usa '|', '∨' u 'o' para la disyunción",
+        )
+    } else {
+        error(token, message)
+    }
 }
 
 /// The `ParseError` for a token and the message saying what was expected.
@@ -640,6 +660,91 @@ mod tests {
         assert_eq!(
             rendered_errors("!"),
             ["línea 1, columna 2: se esperaba una expresión"]
+        );
+    }
+
+    // --- The `v` disjunction typo (ADR-050) --------------------------------
+
+    #[test]
+    fn a_v_where_an_operator_belongs_explains_the_disjunction_spellings() {
+        assert_eq!(
+            rendered_errors("p v q"),
+            ["línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción"]
+        );
+    }
+
+    #[test]
+    fn a_trailing_v_after_a_proposition_explains_the_disjunction_spellings() {
+        assert_eq!(
+            rendered_errors("p v"),
+            ["línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción"]
+        );
+    }
+
+    #[test]
+    fn a_v_before_a_required_parenthesis_explains_the_disjunction_spellings() {
+        assert_eq!(
+            rendered_errors("(p v q)"),
+            ["línea 1, columna 4: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción"]
+        );
+    }
+
+    #[test]
+    fn a_v_midway_through_a_longer_proposition_explains_the_disjunction_spellings() {
+        assert_eq!(
+            rendered_errors("p v q & r"),
+            ["línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción"]
+        );
+    }
+
+    #[test]
+    fn another_identifier_after_a_proposition_keeps_the_generic_message() {
+        assert_eq!(
+            rendered_errors("p q"),
+            ["línea 1, columna 3: se esperaba el fin de la proposición"]
+        );
+        assert_eq!(
+            rendered_errors("p w"),
+            ["línea 1, columna 3: se esperaba el fin de la proposición"]
+        );
+    }
+
+    #[test]
+    fn v_in_operand_position_is_still_a_variable() {
+        assert_eq!(ast("p & v"), "(∧ p v)");
+        assert_eq!(ast("v"), "v");
+        match parse_one("p & v") {
+            Expression::Binary {
+                left,
+                operator,
+                right,
+            } => {
+                assert_eq!(
+                    *left,
+                    Expression::Identifier {
+                        name: "p".to_string(),
+                    }
+                );
+                assert!(matches!(operator.kind, crate::tokens::TokenType::And));
+                assert_eq!(
+                    *right,
+                    Expression::Identifier {
+                        name: "v".to_string(),
+                    }
+                );
+            }
+            other => panic!("expected a binary expression, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn recovery_reports_the_v_message_and_the_next_line_error() {
+        assert_eq!(
+            rendered_errors("p v q\nr &"),
+            [
+                "línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción",
+                "línea 2, columna 4: se esperaba una expresión",
+            ]
         );
     }
 
