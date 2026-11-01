@@ -52,7 +52,7 @@ pub fn scan(source: String) -> Result<Vec<Token>, Vec<Error>> {
     while !is_at_end(&state) {
         state = scan_token(state);
     }
-    let state = add_token(state, TokenType::Eof);
+    let state = add_token(state, TokenType::Eof, false);
     if state.errors.is_empty() {
         Ok(state.tokens)
     } else {
@@ -68,12 +68,12 @@ fn scan_token(state: ScanState) -> ScanState {
         Some('\n') => line_break(advance(state)),
         // CRLF is one line break, and it is a break at the position of the CR.
         Some('\r') if peek_next(&state) == Some('\n') => line_break(advance(advance(state))),
-        Some('(') => add_token(advance(state), TokenType::LeftParen),
-        Some(')') => add_token(advance(state), TokenType::RightParen),
+        Some('(') => add_token(advance(state), TokenType::LeftParen, false),
+        Some(')') => add_token(advance(state), TokenType::RightParen, false),
         Some('-') => {
             let (found, state) = match_char(advance(state), '>');
             if found {
-                add_token(state, TokenType::Implication)
+                add_token(state, TokenType::Implication, false)
             } else {
                 error(state, "se esperaba '>' después de '-'")
             }
@@ -86,7 +86,7 @@ fn scan_token(state: ScanState) -> ScanState {
                 (false, state)
             };
             if found {
-                add_token(state, TokenType::Biconditional)
+                add_token(state, TokenType::Biconditional, false)
             } else {
                 error(state, "se esperaba '->' después de '<'")
             }
@@ -104,7 +104,7 @@ fn scan_token(state: ScanState) -> ScanState {
 /// Records the `Newline` of a line break that has just been consumed. The token
 /// sits on the line it ends, so the line advances after the token is added.
 fn line_break(state: ScanState) -> ScanState {
-    let state = add_token(state, TokenType::Newline);
+    let state = add_token(state, TokenType::Newline, false);
     let line = state.line + 1;
     ScanState { line, ..state }
 }
@@ -129,8 +129,13 @@ fn digits(state: ScanState) -> ScanState {
 fn word(state: ScanState) -> ScanState {
     let state = advance_while(state, |c| c.is_ascii_alphanumeric() || c == '_');
     let lexeme = &state.source[state.token_start..state.current];
-    let kind = TokenType::map(lexeme).unwrap_or_else(|_| TokenType::Identifier(lexeme.to_string()));
-    add_token(state, kind)
+    let (kind, reserved_word) = match TokenType::map(lexeme) {
+        // A word that maps to a kind is one of the reserved spellings; any
+        // other word is an identifier.
+        Ok(kind) => (kind, true),
+        Err(_) => (TokenType::Identifier(lexeme.to_string()), false),
+    };
+    add_token(state, kind, reserved_word)
 }
 
 /// Resolves the current lexeme through the single spelling table: a kind
@@ -138,7 +143,7 @@ fn word(state: ScanState) -> ScanState {
 fn map_lexeme(state: ScanState) -> ScanState {
     let lexeme = &state.source[state.token_start..state.current];
     match TokenType::map(lexeme) {
-        Ok(kind) => add_token(state, kind),
+        Ok(kind) => add_token(state, kind, false),
         Err(message) => error(state, &message),
     }
 }
@@ -187,8 +192,9 @@ fn advance_while(state: ScanState, accept: impl Fn(char) -> bool) -> ScanState {
 }
 
 /// Adds a token of `kind` at the start of the current lexeme and starts a new
-/// lexeme after it.
-fn add_token(state: ScanState, kind: TokenType) -> ScanState {
+/// lexeme after it. `reserved_word` records whether the lexeme was a reserved
+/// word spelling rather than a symbol.
+fn add_token(state: ScanState, kind: TokenType, reserved_word: bool) -> ScanState {
     let ScanState {
         source,
         token_start,
@@ -201,6 +207,7 @@ fn add_token(state: ScanState, kind: TokenType) -> ScanState {
         kind,
         line,
         col: column(&source, token_start),
+        reserved_word,
     };
     tokens.push(token);
     ScanState {
@@ -261,7 +268,12 @@ mod tests {
     }
 
     fn token(kind: TokenType, line: usize, col: usize) -> Token {
-        Token { kind, line, col }
+        Token {
+            kind,
+            line,
+            col,
+            reserved_word: false,
+        }
     }
 
     fn id(name: &str) -> TokenType {
@@ -461,6 +473,141 @@ mod tests {
             ]
         );
         assert_eq!(kinds("p1 q9"), vec![id("p1"), id("q9"), TokenType::Eof]);
+    }
+
+    // --- The reserved_word diagnostic flag (ADR-052) -----------------------
+
+    /// The kind and `reserved_word` flag of every token, so a test can say
+    /// exactly which spellings the scanner recognized as reserved words.
+    fn flags(source: &str) -> Vec<(TokenType, bool)> {
+        scan(source)
+            .expect("the source should scan")
+            .into_iter()
+            .map(|token| (token.kind, token.reserved_word))
+            .collect()
+    }
+
+    #[test]
+    fn a_word_connective_sets_the_reserved_word_flag() {
+        assert_eq!(
+            flags("p y q"),
+            vec![
+                (id("p"), false),
+                (TokenType::And, true),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_symbol_connective_keeps_the_reserved_word_flag_clear() {
+        assert_eq!(
+            flags("p & q"),
+            vec![
+                (id("p"), false),
+                (TokenType::And, false),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn word_literals_are_reserved_but_digit_literals_are_not() {
+        assert_eq!(
+            flags("p V q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Literal(true), true),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+        assert_eq!(
+            flags("p F q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Literal(false), true),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+        assert_eq!(
+            flags("p 1 q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Literal(true), false),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+        assert_eq!(
+            flags("p 0 q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Literal(false), false),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_unknown_word_is_an_identifier_not_a_reserved_word() {
+        assert_eq!(
+            flags("p and q"),
+            vec![
+                (id("p"), false),
+                (id("and"), false),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn word_negation_is_reserved_but_symbol_negation_is_not() {
+        assert_eq!(
+            flags("p no q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Not, true),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+        assert_eq!(
+            flags("p ! q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Not, false),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+    }
+
+    #[test]
+    fn word_implication_and_biconditional_are_reserved() {
+        assert_eq!(
+            flags("p entonces q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Implication, true),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
+        assert_eq!(
+            flags("p sisolosi q"),
+            vec![
+                (id("p"), false),
+                (TokenType::Biconditional, true),
+                (id("q"), false),
+                (TokenType::Eof, false),
+            ]
+        );
     }
 
     #[test]

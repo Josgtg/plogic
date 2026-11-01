@@ -254,11 +254,17 @@ mod tests {
             kind,
             line: 1,
             col: 1,
+            reserved_word: false,
         }
     }
 
     fn token_at(kind: TokenType, line: usize, col: usize) -> Token {
-        Token { kind, line, col }
+        Token {
+            kind,
+            line,
+            col,
+            reserved_word: false,
+        }
     }
 
     fn id(name: &str) -> Expression {

@@ -95,6 +95,11 @@ pub struct Token {
     pub kind: TokenType,
     pub line: usize,
     pub col: usize,
+    /// Whether the source spelled the token with a reserved word (`no`, `y`,
+    /// `o`, `entonces`, `sisolosi`, `V`, `F`) instead of a symbol. The parser
+    /// uses it to explain a misplaced reserved word without changing the
+    /// message for symbols (ADR-052).
+    pub reserved_word: bool,
 }
 
 /// A token displays as its kind does.
@@ -209,6 +214,7 @@ mod tests {
             kind: TokenType::Identifier("q".to_string()),
             line: 2,
             col: 7,
+            reserved_word: false,
         };
         assert_eq!(token.to_string(), "q");
         assert_eq!(token.line, 2);

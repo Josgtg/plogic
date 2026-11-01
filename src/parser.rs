@@ -26,6 +26,7 @@ const EOF_TOKEN: Token = Token {
     kind: TokenType::Eof,
     line: 0,
     col: 0,
+    reserved_word: false,
 };
 
 /// The parser's cursor: the tokens and the index of the next one to read.
@@ -222,7 +223,7 @@ fn primary(state: ParseState) -> RuleResult {
                 state,
             ))
         }
-        _ => Err((error(&token, "se esperaba una expresión"), state)),
+        _ => Err((primary_error(&token, &state), state)),
     }
 }
 
@@ -301,16 +302,83 @@ fn advance(state: ParseState) -> (Token, ParseState) {
 ///
 /// `v` is a common mistyping for the disjunction, but it scans as a variable
 /// name, so the parser sees it as a leftover token. It gets a message that
-/// says it is not an operator and lists the accepted spellings (ADR-050);
-/// every other token keeps the caller's message.
+/// says it is not an operator and lists the accepted spellings (ADR-050).
+/// A reserved word gets a message about its own role (ADR-052); every other
+/// token keeps the caller's message.
 fn operator_error(token: &Token, message: &str) -> Error {
     if matches!(&token.kind, TokenType::Identifier(name) if name == "v") {
-        error(
+        return error(
             token,
             "'v' no es un operador; usa '|', '∨' u 'o' para la disyunción",
-        )
-    } else {
-        error(token, message)
+        );
+    }
+    if token.reserved_word {
+        match &token.kind {
+            TokenType::Not => {
+                return error(
+                    token,
+                    "la negación ('!', '¬' u 'no') va antes de la expresión, no entre dos proposiciones",
+                );
+            }
+            TokenType::Literal(true) => {
+                return error(
+                    token,
+                    "el valor verdadero 'V' no es un operador; para la disyunción usa '|', '∨' u 'o'",
+                );
+            }
+            TokenType::Literal(false) => {
+                return error(
+                    token,
+                    "el valor falso 'F' no es un operador; se escribe como operando",
+                );
+            }
+            _ => {}
+        }
+    }
+    error(token, message)
+}
+
+/// The `ParseError` for a token found where an expression belongs.
+///
+/// A reserved word cannot be a variable, so a binary connective there says so.
+/// Otherwise, when the previous token is a reserved-word connective, the
+/// message says that connective is missing its right operand. Symbol spellings
+/// keep the generic message (ADR-052).
+fn primary_error(token: &Token, state: &ParseState) -> Error {
+    if token.reserved_word
+        && let Some((name, spellings)) = connective_phrase(&token.kind)
+        && !matches!(&token.kind, TokenType::Not)
+    {
+        return error(
+            token,
+            &format!("{name} ({spellings}) no puede usarse como variable"),
+        );
+    }
+    if let Some(previous) = state
+        .current
+        .checked_sub(1)
+        .and_then(|index| state.tokens.get(index))
+        && previous.reserved_word
+        && let Some((name, spellings)) = connective_phrase(&previous.kind)
+    {
+        return error(
+            token,
+            &format!("{name} ({spellings}) necesita una expresión a su derecha"),
+        );
+    }
+    error(token, "se esperaba una expresión")
+}
+
+/// The Spanish name and accepted spellings of a connective, for diagnostics
+/// that must not depend on which spelling the source used.
+fn connective_phrase(kind: &TokenType) -> Option<(&'static str, &'static str)> {
+    match kind {
+        TokenType::Not => Some(("la negación", "'!', '¬' u 'no'")),
+        TokenType::And => Some(("la conjunción", "'&', '∧' u 'y'")),
+        TokenType::Or => Some(("la disyunción", "'|', '∨' u 'o'")),
+        TokenType::Implication => Some(("la implicación", "'->', '→' u 'entonces'")),
+        TokenType::Biconditional => Some(("el bicondicional", "'<->', '↔' u 'sisolosi'")),
+        _ => None,
     }
 }
 
@@ -745,6 +813,203 @@ mod tests {
                 "línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción",
                 "línea 2, columna 4: se esperaba una expresión",
             ]
+        );
+    }
+
+    // --- Reserved-word diagnostics (ADR-052) --------------------------------
+
+    const NEGATION: &str =
+        "la negación ('!', '¬' u 'no') va antes de la expresión, no entre dos proposiciones";
+    const NEGATION_NEEDS: &str =
+        "la negación ('!', '¬' u 'no') necesita una expresión a su derecha";
+
+    #[test]
+    fn a_reserved_word_negation_between_propositions_says_it_is_prefix() {
+        assert_eq!(
+            rendered_errors("p no q"),
+            [format!("línea 1, columna 3: {NEGATION}")]
+        );
+    }
+
+    #[test]
+    fn a_trailing_reserved_word_negation_says_it_is_prefix() {
+        assert_eq!(
+            rendered_errors("p no"),
+            [format!("línea 1, columna 3: {NEGATION}")]
+        );
+    }
+
+    #[test]
+    fn a_lone_reserved_word_negation_needs_an_expression() {
+        assert_eq!(
+            rendered_errors("no"),
+            [format!("línea 1, columna 3: {NEGATION_NEEDS}")]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_negation_after_a_connective_needs_an_expression() {
+        assert_eq!(
+            rendered_errors("p & no"),
+            [format!("línea 1, columna 7: {NEGATION_NEEDS}")]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_true_literal_where_an_operator_belongs_says_it_is_a_value() {
+        assert_eq!(
+            rendered_errors("p V q"),
+            [
+                "línea 1, columna 3: el valor verdadero 'V' no es un operador; para la disyunción usa '|', '∨' u 'o'"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_false_literal_where_an_operator_belongs_says_it_is_a_value() {
+        assert_eq!(
+            rendered_errors("p F q"),
+            ["línea 1, columna 3: el valor falso 'F' no es un operador; se escribe como operando"]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_conjunction_needs_its_right_operand() {
+        assert_eq!(
+            rendered_errors("p y"),
+            [
+                "línea 1, columna 4: la conjunción ('&', '∧' u 'y') necesita una expresión a su derecha"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_conjunction_in_operand_position_cannot_be_a_variable() {
+        assert_eq!(
+            rendered_errors("p & y"),
+            ["línea 1, columna 5: la conjunción ('&', '∧' u 'y') no puede usarse como variable"]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_disjunction_needs_its_right_operand() {
+        assert_eq!(
+            rendered_errors("p o"),
+            [
+                "línea 1, columna 4: la disyunción ('|', '∨' u 'o') necesita una expresión a su derecha"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_disjunction_in_operand_position_cannot_be_a_variable() {
+        assert_eq!(
+            rendered_errors("p & o"),
+            ["línea 1, columna 5: la disyunción ('|', '∨' u 'o') no puede usarse como variable"]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_implication_needs_its_right_operand() {
+        assert_eq!(
+            rendered_errors("p entonces"),
+            [
+                "línea 1, columna 11: la implicación ('->', '→' u 'entonces') necesita una expresión a su derecha"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_implication_in_operand_position_cannot_be_a_variable() {
+        assert_eq!(
+            rendered_errors("p & entonces"),
+            [
+                "línea 1, columna 5: la implicación ('->', '→' u 'entonces') no puede usarse como variable"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_biconditional_needs_its_right_operand() {
+        assert_eq!(
+            rendered_errors("p sisolosi"),
+            [
+                "línea 1, columna 11: el bicondicional ('<->', '↔' u 'sisolosi') necesita una expresión a su derecha"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_reserved_word_biconditional_in_operand_position_cannot_be_a_variable() {
+        assert_eq!(
+            rendered_errors("p & sisolosi"),
+            [
+                "línea 1, columna 5: el bicondicional ('<->', '↔' u 'sisolosi') no puede usarse como variable"
+            ]
+        );
+    }
+
+    #[test]
+    fn symbol_spellings_keep_the_generic_missing_expression_message() {
+        assert_eq!(
+            rendered_errors("p &"),
+            ["línea 1, columna 4: se esperaba una expresión"]
+        );
+        assert_eq!(
+            rendered_errors("p & & q"),
+            ["línea 1, columna 5: se esperaba una expresión"]
+        );
+    }
+
+    #[test]
+    fn symbol_spellings_keep_the_generic_leftover_message() {
+        for source in ["p ! q", "p 1 q", "p and q"] {
+            assert_eq!(
+                rendered_errors(source),
+                ["línea 1, columna 3: se esperaba el fin de la proposición"],
+                "source {source:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn reserved_word_connectives_parse_as_operators() {
+        assert_eq!(ast("p y q"), "(∧ p q)");
+        assert_eq!(ast("p o q"), "(∨ p q)");
+        assert_eq!(ast("p entonces q"), "(→ p q)");
+        assert_eq!(ast("p sisolosi q"), "(↔ p q)");
+    }
+
+    #[test]
+    fn word_literals_are_operands() {
+        assert_eq!(ast("p & V"), "(∧ p V)");
+        assert_eq!(ast("p & F"), "(∧ p F)");
+    }
+
+    #[test]
+    fn a_reserved_word_negation_prefix_still_parses() {
+        assert_eq!(ast("no p"), "(¬ p)");
+    }
+
+    #[test]
+    fn recovery_reports_the_negation_message_and_the_next_line_error() {
+        let errors = parse_errors("p no q\nr &");
+
+        assert_eq!(
+            errors
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>(),
+            [
+                format!("línea 1, columna 3: {NEGATION}"),
+                "línea 2, columna 4: se esperaba una expresión".to_string(),
+            ]
+        );
+        assert!(
+            errors
+                .iter()
+                .all(|error| matches!(error, Error::ParseError { .. })),
+            "every error should be a ParseError: {errors:?}"
         );
     }
 

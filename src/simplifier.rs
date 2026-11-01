@@ -402,6 +402,7 @@ fn operator_token(kind: &TokenType) -> Token {
         kind: kind.clone(),
         line: 0,
         col: 0,
+        reserved_word: false,
     }
 }
 
