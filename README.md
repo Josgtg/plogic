@@ -55,7 +55,7 @@ Modifiers:
 
 `-h` / `--help` prints the help screen on stdout and exits 0: the usage line
 `uso: plogic [opciones] [proposición]` followed by every argument, generated from the
-argument definitions. `-V` / `--version` prints exactly `plogic 0.1.0` and exits 0. The
+argument definitions. `-V` / `--version` prints exactly `plogic 1.0.0` and exits 0. The
 parser prints them when it reaches them, so `plogic --help -x` shows the help but
 `plogic -x --help` is an unknown-flag error, and `plogic -- --help` evaluates the
 proposition `--help`.
@@ -77,7 +77,6 @@ ignore.
 ```sh
 plogic 'p -> q'
 plogic --proposicion '(p o q) y no r'
-plogic --archivo proposiciones.txt --no-simplificar
 plogic --archivo proposiciones.txt --no-simplificar
 plogic --archivo proposiciones.txt --simplificar --salida resultados.txt
 plogic --interactivo
