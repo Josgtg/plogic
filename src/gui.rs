@@ -256,7 +256,7 @@ impl PlogicApp {
     }
 
     /// The row of buttons that insert symbols at the cursor, plus the variable
-    /// button and the clear button.
+    /// button, the delete button and the clear button.
     fn toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             for &(symbol, description) in CONNECTIVES {
@@ -276,6 +276,13 @@ impl PlogicApp {
             if response.clicked() {
                 let variable = next_variable(&self.input);
                 self.insert_at_cursor(ui.ctx(), &variable);
+            }
+
+            let response = ui
+                .button(egui::RichText::new("borrar").monospace())
+                .on_hover_text("borra el carácter anterior al cursor");
+            if response.clicked() {
+                self.delete_before_caret(ui.ctx());
             }
 
             let response = ui
@@ -299,8 +306,41 @@ impl PlogicApp {
     /// Without a known cursor it appends, which is what a first click on a
     /// toolbar button does.
     fn insert_at_cursor(&mut self, ctx: &egui::Context, text: &str) {
+        let (start, end) = self.cursor_bounds();
+        let start_byte = byte_index(&self.input, start);
+        let end_byte = byte_index(&self.input, end);
+        self.input.replace_range(start_byte..end_byte, text);
+
+        let new_index = start + text.chars().count();
+        self.set_caret(ctx, new_index);
+    }
+
+    /// Deletes the character before the last known cursor range, or the
+    /// selected text when there is a selection. Without a known cursor it
+    /// deletes the last character, mirroring the insert's append. It does
+    /// nothing when the caret is at the start of the field.
+    fn delete_before_caret(&mut self, ctx: &egui::Context) {
+        let (start, end) = self.cursor_bounds();
+        // A selection is deleted whole; otherwise the character just before
+        // the caret, counted in characters so a formal symbol is one deletion.
+        let (start, end) = if end > start {
+            (start, end)
+        } else if start > 0 {
+            (start - 1, end)
+        } else {
+            return;
+        };
+        let start_byte = byte_index(&self.input, start);
+        let end_byte = byte_index(&self.input, end);
+        self.input.replace_range(start_byte..end_byte, "");
+        self.set_caret(ctx, start);
+    }
+
+    /// The sorted, in-bounds character range of the last known caret, or the
+    /// end of the field when no caret is known yet.
+    fn cursor_bounds(&self) -> (usize, usize) {
         let characters = self.input.chars().count();
-        let (start, end) = match self.cursor {
+        match self.cursor {
             Some(range) => {
                 let [min, max] = range.sorted_cursors();
                 (
@@ -309,14 +349,13 @@ impl PlogicApp {
                 )
             }
             None => (characters, characters),
-        };
-        let end = end.max(start);
-        let start_byte = byte_index(&self.input, start);
-        let end_byte = byte_index(&self.input, end);
-        self.input.replace_range(start_byte..end_byte, text);
+        }
+    }
 
-        let new_index = start + text.chars().count();
-        let range = CCursorRange::one(CCursor::new(new_index));
+    /// Moves the caret to `index` in the field and returns the focus to it, so
+    /// the next keystroke continues where the button left off.
+    fn set_caret(&mut self, ctx: &egui::Context, index: usize) {
+        let range = CCursorRange::one(CCursor::new(index));
         self.cursor = Some(range);
         let id = input_id();
         let mut state = egui::TextEdit::load_state(ctx, id).unwrap_or_default();
@@ -1399,6 +1438,106 @@ mod tests {
 
         assert_eq!(app.input, "p∧q");
         assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(2))));
+    }
+
+    // --- delete_before_caret -----------------------------------------------
+
+    #[test]
+    fn delete_before_caret_removes_the_character_before_the_caret() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp {
+            input: "pqr".to_string(),
+            cursor: Some(CCursorRange::one(CCursor::new(2))),
+            ..Default::default()
+        };
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "pr");
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(1))));
+    }
+
+    #[test]
+    fn delete_before_caret_counts_a_formal_symbol_as_one_character() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp {
+            input: "p∧q".to_string(),
+            cursor: Some(CCursorRange::one(CCursor::new(2))),
+            ..Default::default()
+        };
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "pq");
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(1))));
+    }
+
+    #[test]
+    fn delete_before_caret_removes_a_selection_whole() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp {
+            input: "p & q".to_string(),
+            cursor: Some(CCursorRange::two(CCursor::new(1), CCursor::new(4))),
+            ..Default::default()
+        };
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "pq");
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(1))));
+    }
+
+    #[test]
+    fn delete_before_caret_at_the_start_changes_nothing() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp {
+            input: "pq".to_string(),
+            cursor: Some(CCursorRange::one(CCursor::new(0))),
+            ..Default::default()
+        };
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "pq");
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(0))));
+    }
+
+    #[test]
+    fn delete_before_caret_without_a_caret_removes_the_last_character() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp {
+            input: "pq".to_string(),
+            ..Default::default()
+        };
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "p");
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(1))));
+    }
+
+    #[test]
+    fn delete_before_caret_without_a_caret_on_an_empty_field_changes_nothing() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp::default();
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "");
+        assert!(app.cursor.is_none());
+    }
+
+    #[test]
+    fn deleting_before_the_caret_does_not_replace_the_stored_outcome() {
+        let ctx = egui::Context::default();
+        let mut app = app_with("p -> q");
+        let before = stored(&app);
+        app.cursor = Some(CCursorRange::one(CCursor::new(3)));
+
+        app.delete_before_caret(&ctx);
+
+        assert_eq!(app.input, "p > q");
+        assert_eq!(stored(&app), before);
     }
 
     // --- value_cell --------------------------------------------------------
