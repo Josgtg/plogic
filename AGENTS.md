@@ -101,7 +101,8 @@ The runtime stack is deliberately small:
 - **eframe 0.37** (egui) opens the graphical window when plogic runs with no
   arguments. It is pure Rust with no webview; the `gui` module calls the
   Orchestrator and builds the centered formula, process, truth-table and
-  classification components (ADR-048, ADR-049).
+  classification components in one scrolling column (ADR-048, ADR-049,
+  ADR-051).
 
 Any other dependency needs a decision first.
 
