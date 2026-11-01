@@ -362,7 +362,10 @@ layout is checked by eye.
   `p & q` gives `r`, skips `y` (reserved for conjunction), and gives `p` when
   every usable letter is used or the formula does not scan. `byte_index` maps
   character indices to UTF-8 byte offsets; insertion replaces a selection and
-  leaves the cursor after the inserted text. `value_cell` maps true to
+  leaves the cursor after the inserted text. `remember_cursor(None)` keeps the
+  last known caret (the unfocused frame when a toolbar button is clicked) and
+  `remember_cursor(Some(range))` replaces it, so a later insertion happens
+  where the caret was, not at the end. `value_cell` maps true to
   `V`/green and false to `F`/red; the classification mapping is
   tautology/green, contradiction/red, contingency/muted.
 - Table data: one column per `table.variables`, one row per `table.rows`, a
