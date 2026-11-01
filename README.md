@@ -196,6 +196,15 @@ $ plogic 'p q'
 línea 1, columna 3: se esperaba el fin de la proposición
 ```
 
+A mistyped or misplaced operator explains the accepted spelling:
+
+```
+$ plogic 'p v q'
+línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la disyunción
+$ plogic 'p no q'
+línea 1, columna 3: la negación ('!', '¬' u 'no') va antes de la expresión, no entre dos proposiciones
+```
+
 A failing stage reports the errors it found; later stages do not run, so a run with
 errors produces no truth tables. An input file with no propositions is an error too
 (`el archivo no contiene proposiciones`).
