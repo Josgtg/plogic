@@ -223,7 +223,7 @@ impl Simplifier {
                 }
             }
             if !improved {
-                return(best, steps);
+                return (best, steps);
             }
         }
     }
