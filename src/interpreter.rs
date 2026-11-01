@@ -54,7 +54,7 @@ impl Interpreter {
 
     /// The distinct variables of `expression`, in order of first appearance
     /// (an in-order walk of the AST).
-    fn variables(expression: &Expression) -> Vec<String> {
+    pub(crate) fn variables(expression: &Expression) -> Vec<String> {
         fn collect(expression: &Expression, variables: &mut Vec<String>) {
             match expression {
                 Expression::Binary { left, right, .. } => {

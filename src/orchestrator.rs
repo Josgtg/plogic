@@ -2,9 +2,9 @@
 //!
 //! The book's `Lox.run` pattern, in functional form: `evaluate` composes the
 //! stages source → tokens → expressions → simplified expressions → truth
-//! tables, `simplify` stops at the simplified formulas, and `report` formats
-//! one error for the UI. All three are static and pure; only the CLI performs
-//! I/O.
+//! tables, `simplify` stops at the simplified formulas, `assess` is the GUI's
+//! selective path that may skip the table, and `report` formats one error for
+//! the UI. All entry points are static and pure; only the UI performs I/O.
 //!
 //! Stages gate each other: a scan failure stops before parsing, a parse failure
 //! stops before simplification, and an eval failure aborts the whole run, so an
@@ -29,6 +29,23 @@ pub struct Orchestrator;
 pub struct Evaluation {
     pub table: TruthTable,
     pub simplification: Option<Simplification>,
+}
+
+/// One proposition as the GUI needs it: the normalized formula, its variable
+/// count, the simplification when it ran, and the table only when it was
+/// requested and small enough.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Assessment {
+    /// The evaluated formula: simplified when `simplify` was true, original
+    /// otherwise.
+    pub formula: String,
+    /// The distinct variables of `formula`.
+    pub variables: usize,
+    /// The simplification and its steps, when the Simplifier ran.
+    pub simplification: Option<Simplification>,
+    /// The truth table, or `None` when the caller did not ask for it or the
+    /// limit excluded it.
+    pub table: Option<TruthTable>,
 }
 
 impl Orchestrator {
@@ -62,6 +79,46 @@ impl Orchestrator {
         Ok(evaluations)
     }
 
+    /// Evaluates `source` for the GUI, which may skip the table entirely.
+    ///
+    /// `max_variables` controls tabulation: `None` builds no table, while
+    /// `Some(limit)` builds one only when the chosen expression has fewer than
+    /// `limit` distinct variables. The formula and its simplification steps are
+    /// always produced; the table and its classification are then absent.
+    pub fn assess(
+        source: String,
+        simplify: bool,
+        max_variables: Option<usize>,
+    ) -> Result<Vec<Assessment>, Vec<Error>> {
+        let expressions = Self::parse(source)?;
+
+        let mut assessments = Vec::with_capacity(expressions.len());
+        for expression in &expressions {
+            let simplification = simplify.then(|| Simplifier::simplify(expression));
+            let chosen = simplification
+                .as_ref()
+                .map(|simplification| &simplification.expression)
+                .unwrap_or(expression);
+            let variables = Interpreter::variables(chosen).len();
+            let formula = InfixPrinter::print(chosen);
+            let simplified = simplification
+                .as_ref()
+                .map(|simplification| InfixPrinter::print(&simplification.expression));
+            let table = if max_variables.is_some_and(|limit| variables < limit) {
+                Some(Interpreter::interpret(chosen)?.with_display(formula.clone(), simplified))
+            } else {
+                None
+            };
+            assessments.push(Assessment {
+                formula,
+                variables,
+                simplification,
+                table,
+            });
+        }
+        Ok(assessments)
+    }
+
     /// Simplifies every proposition of `source` and returns each result with
     /// its steps, in input order. No table is built, so the size limit does not
     /// apply (`--simplificar`).
@@ -70,7 +127,7 @@ impl Orchestrator {
         Ok(expressions.iter().map(Simplifier::simplify).collect())
     }
 
-    /// The shared first half of both entry points: source to expressions.
+    /// The shared first half of the entry points: source to expressions.
     fn parse(source: String) -> Result<Vec<Expression>, Vec<Error>> {
         let tokens = scan(source)?;
         Parser::parse(tokens)
@@ -84,7 +141,7 @@ impl Orchestrator {
 
 #[cfg(test)]
 mod tests {
-    use super::{Evaluation, Orchestrator};
+    use super::{Assessment, Evaluation, Orchestrator};
     use crate::error::Error;
     use crate::expression::InfixPrinter;
     use crate::simplifier::{Rule, Simplification};
@@ -121,6 +178,27 @@ mod tests {
 
     fn results(table: &TruthTable) -> Vec<bool> {
         table.rows.iter().map(|row| row.result).collect()
+    }
+
+    fn assess(
+        source: &str,
+        simplify: bool,
+        max_variables: Option<usize>,
+    ) -> Result<Vec<Assessment>, Vec<Error>> {
+        Orchestrator::assess(source.to_string(), simplify, max_variables)
+    }
+
+    fn one_assessment(source: &str, simplify: bool, max_variables: Option<usize>) -> Assessment {
+        let mut assessments = assess(source, simplify, max_variables)
+            .unwrap_or_else(|errors| panic!("source {source:?} failed: {errors:?}"));
+        assert_eq!(assessments.len(), 1, "source {source:?}");
+        assessments.remove(0)
+    }
+
+    /// `p1 | p2 | ... | pN`: a chain with exactly `count` distinct variables.
+    fn variables_or_chain(count: usize) -> String {
+        let names: Vec<String> = (1..=count).map(|index| format!("p{index}")).collect();
+        names.join(" | ")
     }
 
     // --- Default table -----------------------------------------------------
@@ -387,6 +465,161 @@ mod tests {
                 .all(|error| matches!(error, Error::ParseError { .. })),
             "mixed error kinds: {errors:?}"
         );
+    }
+
+    // --- Orchestrator.assess without a table request -----------------------
+
+    #[test]
+    fn assess_without_a_table_request_returns_the_simplified_formula_and_its_steps() {
+        let assessment = one_assessment("p -> q", true, None);
+
+        assert_eq!(assessment.formula, "q ∨ ¬p");
+        assert_eq!(assessment.variables, 2);
+        let simplification = assessment
+            .simplification
+            .expect("the assessed run should simplify");
+        assert_eq!(simplification.steps.len(), 1);
+        assert_eq!(simplification.steps[0].rule, Rule::Conditional);
+        assert_eq!(simplification.steps[0].rule.label(), "13a. Condicional");
+        assert_eq!(assessment.table, None);
+    }
+
+    #[test]
+    fn assess_without_a_table_request_and_without_simplifying_uses_the_original() {
+        let assessment = one_assessment("p -> q", false, None);
+
+        assert_eq!(assessment.formula, "p → q");
+        assert_eq!(assessment.variables, 2);
+        assert_eq!(assessment.simplification, None);
+        assert_eq!(assessment.table, None);
+    }
+
+    // --- Orchestrator.assess with a table limit ----------------------------
+
+    #[test]
+    fn assess_builds_a_table_below_the_limit() {
+        let assessment = one_assessment("p -> q", true, Some(10));
+        let table = assessment.table.expect("two variables fit below ten");
+
+        assert_eq!(table.label, "q ∨ ¬p");
+        assert_eq!(table.variables, ["q", "p"]);
+        assert_eq!(table.rows.len(), 4);
+    }
+
+    #[test]
+    fn assess_builds_a_table_for_nine_variables() {
+        let assessment = one_assessment(&variables_or_chain(9), true, Some(10));
+
+        assert_eq!(assessment.variables, 9);
+        assert!(assessment.table.is_some(), "nine variables fit below ten");
+    }
+
+    #[test]
+    fn assess_skips_the_table_for_ten_variables_but_keeps_the_formula() {
+        let source = variables_or_chain(10);
+        let assessment = one_assessment(&source, true, Some(10));
+
+        assert_eq!(assessment.variables, 10);
+        assert_eq!(assessment.table, None);
+        assert!(assessment.simplification.is_some());
+        assert!(!assessment.formula.is_empty());
+    }
+
+    #[test]
+    fn assess_does_not_refuse_a_thirteen_variable_original_without_a_table() {
+        let assessment = one_assessment(&tautology_with_thirteen_variables(), false, Some(10));
+
+        assert_eq!(assessment.variables, 13);
+        assert_eq!(assessment.table, None);
+        assert_eq!(assessment.simplification, None);
+        assert!(!assessment.formula.is_empty());
+    }
+
+    #[test]
+    fn assess_tabulates_a_thirteen_variable_tautology_after_simplifying_it() {
+        let assessment = one_assessment(&tautology_with_thirteen_variables(), true, Some(10));
+        let table = assessment
+            .table
+            .expect("the simplification removes the variables");
+
+        assert_eq!(assessment.formula, "V");
+        assert_eq!(assessment.variables, 0);
+        assert!(table.variables.is_empty());
+        assert_eq!(table.rows.len(), 1);
+        assert!(table.rows[0].result);
+        assert_eq!(table.label, "V");
+    }
+
+    // --- Orchestrator.assess batch and gates -------------------------------
+
+    #[test]
+    fn assess_returns_one_assessment_per_proposition_in_input_order() {
+        let assessments =
+            assess("p & q\nr & s\np -> q\n", true, Some(10)).expect("the batch should be assessed");
+
+        assert_eq!(assessments.len(), 3);
+        assert_eq!(assessments[0].formula, "p ∧ q");
+        assert_eq!(assessments[1].formula, "r ∧ s");
+        assert_eq!(assessments[2].formula, "q ∨ ¬p");
+        assert!(
+            assessments
+                .iter()
+                .all(|assessment| assessment.table.is_some())
+        );
+    }
+
+    #[test]
+    fn assess_of_an_empty_source_returns_no_assessments() {
+        assert_eq!(assess("", true, Some(10)), Ok(vec![]));
+        assert_eq!(assess("  \n\n", true, None), Ok(vec![]));
+    }
+
+    #[test]
+    fn assess_gates_scan_errors_before_parsing() {
+        let errors = assess("p % q", true, Some(10)).expect_err("the source must not scan");
+
+        assert!(!errors.is_empty());
+        assert!(
+            errors
+                .iter()
+                .all(|error| matches!(error, Error::ScanError { .. })),
+            "mixed error kinds: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn assess_gates_parse_errors_before_building_a_table() {
+        let errors = assess("p &", true, Some(10)).expect_err("the source must not parse");
+
+        assert!(!errors.is_empty());
+        assert!(
+            errors
+                .iter()
+                .all(|error| matches!(error, Error::ParseError { .. })),
+            "mixed error kinds: {errors:?}"
+        );
+    }
+
+    // --- Table display text ------------------------------------------------
+
+    #[test]
+    fn a_built_table_is_labelled_with_the_chosen_formula_and_the_simplified_text() {
+        let table = one_assessment("p -> q", true, Some(10))
+            .table
+            .expect("two variables fit below ten");
+
+        assert_eq!(table.label, "q ∨ ¬p");
+        assert_eq!(table.simplified, Some("q ∨ ¬p".to_string()));
+    }
+
+    #[test]
+    fn a_built_table_without_simplification_is_labelled_with_the_original() {
+        let table = one_assessment("p -> q", false, Some(10))
+            .table
+            .expect("two variables fit below ten");
+
+        assert_eq!(table.label, "p → q");
+        assert_eq!(table.simplified, None);
     }
 
     // --- report ------------------------------------------------------------
