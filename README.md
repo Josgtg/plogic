@@ -86,7 +86,9 @@ plogic --help
 
 In interactive mode each line is evaluated on its own and presented immediately; a bad
 line reports its errors without ending the session, and `exit`, `salir` or Ctrl-D ends
-it. `--no-simplificar` and `--simplificar` apply to every line, but using them together
+it. On a terminal the arrows move the caret and Up/Down recall the lines typed in that
+session; Ctrl-C cancels the current line without ending the session.
+`--no-simplificar` and `--simplificar` apply to every line, but using them together
 is a usage error.
 
 ## Graphical window
