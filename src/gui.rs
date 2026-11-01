@@ -87,8 +87,9 @@ const SEPARATOR_WIDTH: f32 = 14.0;
 /// The horizontal padding of a table cell, on each side.
 const CELL_PADDING: f32 = 10.0;
 
-/// The buttons that insert a connective or a parenthesis at the cursor.
-const CONNECTIVES: &[(&str, &str)] = &[
+/// The buttons that insert a connective, a parenthesis or a literal at the
+/// cursor.
+const SYMBOLS: &[(&str, &str)] = &[
     ("¬", "negación"),
     ("∧", "conjunción"),
     ("∨", "disyunción"),
@@ -96,6 +97,8 @@ const CONNECTIVES: &[(&str, &str)] = &[
     ("↔", "bicondicional"),
     ("(", "abre paréntesis"),
     (")", "cierra paréntesis"),
+    ("V", "verdadero"),
+    ("F", "falso"),
 ];
 
 /// The rows of the help list: formal symbol, Spanish name, other spellings.
@@ -259,7 +262,7 @@ impl PlogicApp {
     /// button, the delete button and the clear button.
     fn toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            for &(symbol, description) in CONNECTIVES {
+            for &(symbol, description) in SYMBOLS {
                 let response = ui
                     .button(egui::RichText::new(symbol).monospace().size(16.0))
                     .on_hover_text(description);
@@ -1602,6 +1605,28 @@ mod tests {
 
         assert_eq!(CONNECTIVE_HELP.len(), 7);
         assert_eq!(CONNECTIVE_HELP, expected);
+    }
+
+    #[test]
+    fn the_toolbar_offers_the_connectives_parentheses_and_literals() {
+        let expected = [
+            ("¬", "negación"),
+            ("∧", "conjunción"),
+            ("∨", "disyunción"),
+            ("→", "implicación"),
+            ("↔", "bicondicional"),
+            ("(", "abre paréntesis"),
+            (")", "cierra paréntesis"),
+            ("V", "verdadero"),
+            ("F", "falso"),
+        ];
+
+        assert_eq!(SYMBOLS.len(), 9);
+        assert_eq!(SYMBOLS, expected);
+        for &(symbol, description) in SYMBOLS {
+            assert!(!description.trim().is_empty(), "symbol {symbol:?}");
+            assert!(scan(symbol.to_string()).is_ok(), "symbol {symbol:?}");
+        }
     }
 
     #[test]
