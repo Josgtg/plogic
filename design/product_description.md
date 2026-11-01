@@ -26,10 +26,10 @@ by Robert Nystrom, implementing a functional programming style rather than pure 
 ## Graphical window
 
 Running `plogic` with no arguments opens a dark, monospace window for one
-proposition at a time. The header and input section stay fixed; only the
-result section scrolls, and its centered components are the simplified (or
-original) formula, the optional process list, a real truth table and the
-classification. The collapsed help lists the accepted connectives and
+proposition at a time. The whole window scrolls as one column: its centered
+components — the simplified (or original) formula, the optional process list, a
+real truth table and the classification — flow directly in the main window, not
+in a result box. The collapsed help lists the accepted connectives and
 literals. The `Simplificar`, `Mostrar tabla` and `Mostrar proceso` controls are
 all read when `Evaluar` is pressed: with `Mostrar tabla` off the table is not
 processed, and with it on the table is built only for fewer than ten

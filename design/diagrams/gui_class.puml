@@ -53,14 +53,15 @@ class Step {
 }
 
 note bottom of PlogicApp
-  Fixed header and input section; only the result section
-  scrolls. The result components are centered; the help is
-  a collapsed single-column list at a smaller size. All
-  three modes are snapshotted in View when Evaluar is
-  pressed; changing one afterwards only affects the next
-  evaluation. Mostrar tabla off calls assess with no table;
-  on, assess builds only below ten variables. No table means
-  no classification (ADR-049).
+  The whole window is one vertical scroll area. Header,
+  input section and centered result components flow in the
+  same column, with no separate result pane (ADR-051). The
+  help is a collapsed one-column-set list at a smaller
+  size. All three modes are snapshotted in View when
+  Evaluar is pressed; changing one afterwards only affects
+  the next evaluation. Mostrar tabla off calls assess with
+  no table; on, assess builds only below ten variables. No
+  table means no classification (ADR-049).
 end note
 
 GUI ..> PlogicApp : <<create>>

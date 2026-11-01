@@ -51,7 +51,7 @@ is a thin wrapper over `error.to_string()` (ADR-037).
 | Stage | Example messages |
 | --- | --- |
 | Scanner | `carácter inválido '%'`, `literal inválido '12'`, `se esperaba '>' después de '-'`, `se esperaba '->' después de '<'` |
-| Parser | `se esperaba una expresión`, `se esperaba ')' después de la expresión`, `se esperaba el fin de la proposición` |
+| Parser | `se esperaba una expresión`, `se esperaba ')' después de la expresión`, `se esperaba el fin de la proposición`, `'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción` |
 | Interpreter | `resultado muy largo: más de 4096 filas` |
 
 `Simplifier.simplify` and `TruthTable` cannot fail at all. The only error
@@ -112,3 +112,5 @@ and exits non-zero (see ui.md).
 | `p &` | `línea 1, columna 4: se esperaba una expresión` |
 | `(p \| q` | `línea 1, columna 7: se esperaba ')' después de la expresión` |
 | `p q` | `línea 1, columna 3: se esperaba el fin de la proposición` |
+| `p v q` | `línea 1, columna 3: 'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción` |
+| `(p v q)` | `línea 1, columna 4: 'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción` |

@@ -61,6 +61,8 @@ ADR-nnn`.
 | 047 | The Simplifier returns its applied steps, shown with `-m` | Accepted |
 | 048 | A graphical window opens on a bare `plogic`, built with egui/eframe | Accepted |
 | 049 | GUI modes are snapshotted; tables are only built below ten variables | Accepted |
+| 050 | The parser explains that `v` is not an operator in operator position | Accepted |
+| 051 | The GUI scrolls the whole window as one column | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1425,6 +1427,63 @@ ten-variable limit; the centered presentation and the one help column set are
 checked by eye.
 `Orchestrator.evaluate` and the CLI tests are unchanged.
 
+## ADR-050 — The parser explains that `v` is not an operator in operator position
+
+Status: Accepted
+
+Context: The language spells disjunction `|`, `∨` or `o`. Users often type the
+letter `v` instead, but `v` is a valid variable name: the scanner produces an
+identifier, and the parser then reports the generic `se esperaba el fin de la
+proposición` (or `se esperaba ')' después de la expresión`) at the `v`
+(ADR-003). That message says what was expected but not why the obvious
+spelling failed.
+
+Decision: When the parser finds an identifier named `v` where an operator
+belongs — a leftover token after a complete expression, or a token before a
+required `)` — it reports `'v' no es un operador; usa '|', '∨' u 'o' para la
+disyunción` at that token. `v` in operand position stays a legal variable, and
+every other leftover token keeps the generic message. The special case lives
+in the parser's `operator_error` helper, not in the scanner or the token
+vocabulary: `v` is syntactically valid as a name, so the mistake is about the
+operator position.
+
+Alternatives: rejecting `v` in the scanner (would remove a valid variable
+name); always appending the explanation to parser errors (noisy and wrong for
+`v` in operand position); special-casing only `p v q` at the proposition level
+(would miss `(p v q)` and `p v`).
+
+Consequences: The message set in `error_handling.md` grows by one, and the
+parser test plan covers `p v q`, `p v`, `(p v q)`, `p q` and `p & v`. The
+message is longer than the others but only appears for this mistake.
+
+## ADR-051 — The GUI scrolls the whole window as one column
+
+Status: Accepted
+
+Context: ADR-049 kept the header and input section fixed and scrolled only the
+result section, inside a dedicated scroll pane. The result components therefore
+lived in a box-like area of their own. The design revision wants the components
+to belong to the main window and the window itself to scroll, so the layout
+behaves like one document.
+
+Decision: The GUI keeps one centered column of bounded width inside a single
+vertical scroll area that wraps the whole content: header, input section and
+result components. The result section no longer has a scroll area of its own;
+its components flow directly in the main column, with the same order,
+centering, labels and spacing as before. The truth table keeps its horizontal
+scroll when its columns do not fit, but it grows vertically with the window
+scroll.
+
+Alternatives: keeping the result pane (rejected by the revision); scrolling only
+the results with a fixed header (the ADR-049 layout); two nested vertical
+scrolls (confusing wheel behavior).
+
+Consequences: The controls scroll out of view with the results, so `Evaluar` is
+not always visible while reading a long table. The public `eframe` surface does
+not change; only `PlogicApp::ui` and `result_section` change. The GUI test plan
+drops the fixed-input assumption and keeps the state tests; the layout is
+checked by eye.
+
 ## Errata
 
 - ADR-001 lists `Orchestrator.evaluate(source, simplify)`; the signature gained
@@ -1492,3 +1551,9 @@ checked by eye.
   and input section stay fixed, only the result section scrolls and is
   centered, the help is one column set, the three modes are snapshotted
   at `Evaluar`, and the GUI builds tables only below ten variables.
+- ADR-049's fixed header/input and result-only scroll are replaced by ADR-051:
+  the whole window is one vertical scroll area and the result components flow
+  directly in the main column. The centering, the one help column set, the
+  snapshot modes and the ten-variable table policy are unchanged.
+- ADR-003's spelling table is unchanged by ADR-050: `v` stays a variable name,
+  and only the parser's operator-position message explains the mistyping.

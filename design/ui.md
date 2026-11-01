@@ -73,11 +73,12 @@ scanner receives the original text.
 ## Graphical window
 
 Running `plogic` with no arguments opens the window in [gui.md](gui.md). It
-evaluates one proposition at a time. The header and input section are fixed;
-only the result section scrolls, and its centered components are the formula,
-the optional process, the optional table and the classification. `Simplificar`,
-`Mostrar tabla` and `Mostrar proceso` are all read once, when `Evaluar` is
-pressed; changing one afterwards only affects the next evaluation. `Mostrar
+evaluates one proposition at a time. The whole window is one vertical scroll
+area: the centered components — the formula, the optional process, the optional
+table and the classification — flow in the main column, with no separate
+result pane. `Simplificar`, `Mostrar tabla` and `Mostrar proceso` are all read
+once, when `Evaluar` is pressed; changing one afterwards only affects the next
+evaluation. `Mostrar
 tabla` off means the table is not processed at all; when it is on, the table is
 built only for fewer than ten variables, and the classification appears only
 with a table. Editing, inserting or clearing the formula does not replace the

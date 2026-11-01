@@ -74,6 +74,12 @@ covers the GUI's state and pure helpers; the rendered window is checked by eye.
   recovery resumed after the first bad line, from the state carried by the
   failing rule at the failing token.
 - Error positions: each example in `error_handling.md` reproduced exactly.
+- `v` in operator position: `p v q` and `p v` report
+  `línea 1, columna 3: 'v' no es un operador; usa '|', '∨' u 'o' para la
+  disyunción`; `(p v q)` reports the same message at column 4 instead of the
+  generic `se esperaba ')' después de la expresión`. `p q` keeps
+  `se esperaba el fin de la proposición`, and `p & v` parses normally with `v`
+  as a variable (ADR-050).
 
 ## 3. Simplifier
 
@@ -339,11 +345,12 @@ layout is checked by eye.
   tautology/green, contradiction/red, contingency/muted.
 - Table data: one column per `table.variables`, one row per `table.rows`, a
   header of the variables plus `Resultado`, and `2^variables` rows. The table
-  is a real grid, horizontally scrollable when needed; the result section is
-  the only vertical scroll. The visual layout (centered cells, alternating
-  rows, header above the body) is checked by eye.
-- Layout and help: the header and input section are fixed, the result section
-  scrolls and its contents are centered; the `Ayuda` list is collapsed by
+  is a real grid, horizontally scrollable when needed; the window is the only
+  vertical scroll. The visual layout (centered cells, alternating rows, header
+  above the body) is checked by eye.
+- Layout and help: the whole window is one vertical scroll area; the header,
+  the input section and the centered result components flow in the same column,
+  with no separate result pane or result box. The `Ayuda` list is collapsed by
   default and, when open, is one column set with the rows
   `¬ negación !, no`, `∧ conjunción &, y`, `∨ disyunción |, o`,
   `→ implicación ->, entonces`, `↔ bicondicional <->, sisolosi`,

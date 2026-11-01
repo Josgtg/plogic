@@ -22,9 +22,10 @@ underlying backend error is not user-facing.
 
 A single native window, 860x880 by default and at least 620x620, titled
 `plogic`. It is dark and monospace, fixed to the mockup's theme. One centered
-column, at most 760 points wide, holds the content. The header and the input
-section are fixed; only the result section scrolls, so the controls never move
-when a result appears.
+column, at most 760 points wide, holds the content. The whole window is one
+vertical scroll area: header, input section and result components flow in the
+same column, with no separate result pane, and the scrollbar belongs to the
+window (ADR-051).
 
 From top to bottom:
 
@@ -37,8 +38,9 @@ From top to bottom:
 2. `Proposición`: a heading with the `Enter para evaluar` hint, the single-line
    formula field (hint `p | q & s -> t`), the insertion toolbar, the three
    controls and the full-width `Evaluar` button, in that order.
-3. `Resultado`: the section title and, in the only scroll area, the centered
-   result components. With no result the section shows the muted line
+3. `Resultado`: the section title and the centered result components, which
+   flow directly in the window column rather than in a result box or a pane
+   of their own. With no result the section shows the muted line
    `El resultado aparecerá aquí.`.
 
 The toolbar inserts `¬`, `∧`, `∨`, `→`, `↔`, `(`, `)` at the cursor, replacing
@@ -75,7 +77,7 @@ The `Resultado` section is centered and contains, per assessment:
 - **Truth table**: a `Tabla de verdad` label and a real table, not aligned
   text. The columns are one per variable plus the result column, headed
   `Resultado`. Cells are centered; `V` is green, `F` is red; rows alternate a
-  subtle background. The table grows in the result scroll area; it scrolls
+  subtle background. The table grows with the window scroll; it scrolls
   horizontally when the columns do not fit.
 - **Classification**: a `Clasificación` label and the usual Spanish sentence
   (`Esta proposición es una tautología.`, `… una contradicción.`, `… una

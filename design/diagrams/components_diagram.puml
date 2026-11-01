@@ -17,12 +17,11 @@ note top of UI
 end note
 
 note top of GUI
-  Bare `plogic` opens this window. It keeps the input
-  section fixed and scrolls only the centered result
-  components: formula, optional process, optional table
-  and classification. Modes are snapshotted at Evaluar;
-  the table is skipped when hidden and built only below
-  ten variables (ADR-049).
+  Bare `plogic` opens this window. The whole window scrolls
+  as one column: header, input section and centered result
+  components, with no separate result pane. Modes are
+  snapshotted at Evaluar; the table is skipped when hidden
+  and built only below ten variables (ADR-049, ADR-051).
 end note
 
 note bottom of Scanner

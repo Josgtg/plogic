@@ -51,6 +51,7 @@ class Parser {
   -{static} advance(state: ParseState): (Token, ParseState)
   -{static} is_at_end(state: ParseState): bool
   -{static} peek(state: ParseState): Token
+  -{static} operator_error(token: Token, message: str): Error
   -{static} error(token: Token, message: str): Error
   -{static} synchronize(state: ParseState): ParseState
 }
@@ -111,6 +112,13 @@ note bottom of Parser
   cannot read out of bounds. Eof is never consumed; a
   proposition consumes its Newline and a blank line is
   skipped by the loop (ADR-041).
+
+  A leftover token where an operator belongs is normally
+  reported with the caller's message. The exception is an
+  identifier named `v`: it scans as a variable, so
+  operator_error explains that it is not a disjunction and
+  lists `|`, `∨` and `o` (ADR-050). `v` in operand
+  position stays a legal variable.
 end note
 
 Orchestrator ..> Parser

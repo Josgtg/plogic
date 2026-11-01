@@ -101,3 +101,10 @@ Example: `!p & q` becomes
 Typical messages: `se esperaba una expresión`,
 `se esperaba ')' después de la expresión`, `se esperaba el fin de la
 proposición` (a proposition did not end at `Newline` or `Eof`).
+
+`v` scans as a variable name, not as a connective, so `p v q` leaves `v`
+where an operator belongs. At that point — a leftover token after a complete
+expression, or a `v` before a required `)` — the parser replaces the generic
+message with `'v' no es un operador; usa '|', '∨' u 'o' para la disyunción`
+(ADR-050). Any other leftover token keeps the message that says what was
+expected, and `v` in operand position (`p & v`) stays a legal variable.
