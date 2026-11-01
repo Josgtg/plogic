@@ -67,12 +67,13 @@ fn default_presentation_shows_simplified_table_and_classification() {
     assert_eq!(
         text(&output.stdout),
         "Simplificada: q ∨ ¬p\n\n\
+         Tabla de verdad:\n\
          q  p  | q ∨ ¬p\n\
          F  F  | V\n\
          F  V  | F\n\
          V  F  | V\n\
          V  V  | V\n\n\
-         Esta proposición es una contingencia.\n"
+         Clasificación: Esta proposición es una contingencia.\n"
     );
     assert!(output.stderr.is_empty());
 
@@ -89,12 +90,13 @@ fn no_simplificar_omits_the_simplified_line_only() {
     assert!(!stdout.contains("Simplificada:"));
     assert_eq!(
         stdout,
-        "p  q  | p → q\n\
+        "Tabla de verdad:\n\
+         p  q  | p → q\n\
          F  F  | V\n\
          F  V  | V\n\
          V  F  | F\n\
          V  V  | V\n\n\
-         Esta proposición es una contingencia.\n"
+         Clasificación: Esta proposición es una contingencia.\n"
     );
     // Only the separator between the table and the classification remains.
     assert_eq!(stdout.matches("\n\n").count(), 1);
@@ -113,9 +115,10 @@ fn default_table_of_a_tautology_has_no_variables() {
     assert_eq!(
         stdout,
         "Simplificada: V\n\n\
+         Tabla de verdad:\n\
          V\n\
          V\n\n\
-         Esta proposición es una tautología.\n"
+         Clasificación: Esta proposición es una tautología.\n"
     );
     assert!(!stdout.contains('|'));
     assert!(output.stderr.is_empty());
@@ -164,9 +167,10 @@ fn a_constant_table_has_a_v_header_and_a_v_row_and_no_separator() {
     assert_eq!(
         stdout,
         "Simplificada: V\n\n\
+         Tabla de verdad:\n\
          V\n\
          V\n\n\
-         Esta proposición es una tautología.\n"
+         Clasificación: Esta proposición es una tautología.\n"
     );
     assert!(!stdout.contains('|'));
     assert!(output.stderr.is_empty());
@@ -184,12 +188,13 @@ fn multi_character_variables_are_aligned_without_trailing_spaces() {
     assert_eq!(
         stdout,
         "Simplificada: p1 ∧ p2\n\n\
+         Tabla de verdad:\n\
          p1  p2  | p1 ∧ p2\n\
          F   F   | F\n\
          F   V   | F\n\
          V   F   | F\n\
          V   V   | V\n\n\
-         Esta proposición es una contingencia.\n"
+         Clasificación: Esta proposición es una contingencia.\n"
     );
     for line in stdout.lines() {
         assert_eq!(line, line.trim_end(), "trailing space in {line:?}");
@@ -211,13 +216,15 @@ fn mostrar_proceso_appends_the_numbered_steps_after_the_simplified_line() {
         text(&output.stdout),
         "Simplificada: q ∨ ¬p\n\n\
          Proceso:\n\
+         0. Original: p → q\n\
          1. 13a. Condicional: q ∨ ¬p\n\n\
+         Tabla de verdad:\n\
          q  p  | q ∨ ¬p\n\
          F  F  | V\n\
          F  V  | F\n\
          V  F  | V\n\
          V  V  | V\n\n\
-         Esta proposición es una contingencia.\n"
+         Clasificación: Esta proposición es una contingencia.\n"
     );
     assert!(output.stderr.is_empty());
 
@@ -234,6 +241,7 @@ fn mostrar_proceso_lists_the_de_morgan_chain_in_order() {
         text(&output.stdout),
         "Simplificada: p ∧ q\n\n\
          Proceso:\n\
+         0. Original: ¬(¬p ∨ ¬q)\n\
          1. 10a. De Morgan: ¬¬p ∧ ¬¬q\n\
          2. 7a. Doble negación: p ∧ ¬¬q\n\
          3. 7a. Doble negación: p ∧ q\n"
@@ -252,7 +260,7 @@ fn mostrar_proceso_with_simplificar_prints_the_formula_and_the_process_only() {
     let stdout = text(&output.stdout);
     assert_eq!(
         stdout,
-        "Simplificada: q ∨ ¬p\n\nProceso:\n1. 13a. Condicional: q ∨ ¬p\n"
+        "Simplificada: q ∨ ¬p\n\nProceso:\n0. Original: p → q\n1. 13a. Condicional: q ∨ ¬p\n"
     );
     assert!(!stdout.contains('|'));
     assert!(!stdout.contains("Esta proposición"));
@@ -272,10 +280,11 @@ fn mostrar_proceso_omits_the_block_when_no_law_applied() {
     assert_eq!(
         stdout,
         "Simplificada: p\n\n\
+         Tabla de verdad:\n\
          p  | p\n\
          F  | F\n\
          V  | V\n\n\
-         Esta proposición es una contingencia.\n"
+         Clasificación: Esta proposición es una contingencia.\n"
     );
     assert!(output.stderr.is_empty());
 
@@ -329,21 +338,24 @@ fn mostrar_proceso_in_file_mode_numbers_each_proposition_and_omits_empty_blocks(
         "Proposición 1:\n\n\
          Simplificada: q ∨ ¬p\n\n\
          Proceso:\n\
+         0. Original: p → q\n\
          1. 13a. Condicional: q ∨ ¬p\n\n\
+         Tabla de verdad:\n\
          q  p  | q ∨ ¬p\n\
          F  F  | V\n\
          F  V  | F\n\
          V  F  | V\n\
          V  V  | V\n\n\
-         Esta proposición es una contingencia.\n\n\
+         Clasificación: Esta proposición es una contingencia.\n\n\
          Proposición 2:\n\n\
          Simplificada: p ∧ q\n\n\
+         Tabla de verdad:\n\
          p  q  | p ∧ q\n\
          F  F  | F\n\
          F  V  | F\n\
          V  F  | F\n\
          V  V  | V\n\n\
-         Esta proposición es una contingencia.\n"
+         Clasificación: Esta proposición es una contingencia.\n"
     );
     assert_eq!(stdout.matches("Proceso:").count(), 1);
     assert!(output.stderr.is_empty());
@@ -358,8 +370,8 @@ fn interactive_mostrar_proceso_adds_the_block_to_each_line_that_applied_a_law() 
 
     assert_eq!(code(&output), Some(0));
     let stdout = text(&output.stdout);
-    assert!(stdout.contains("> Simplificada: q ∨ ¬p\n\nProceso:\n1. 13a. Condicional: q ∨ ¬p\n\n"));
-    assert!(stdout.contains("> Simplificada: p ∧ q\n\np  q  | p ∧ q\n"));
+    assert!(stdout.contains("> Simplificada: q ∨ ¬p\n\nProceso:\n0. Original: p → q\n1. 13a. Condicional: q ∨ ¬p\n\nTabla de verdad:\n"));
+    assert!(stdout.contains("> Simplificada: p ∧ q\n\nTabla de verdad:\np  q  | p ∧ q\n"));
     assert_eq!(stdout.matches("Proceso:").count(), 1);
     assert!(stdout.ends_with("> "));
     assert!(output.stderr.is_empty());
@@ -380,7 +392,7 @@ fn mostrar_proceso_with_salida_writes_the_process_to_the_file() {
     assert!(output.stderr.is_empty());
     let written = std::fs::read(dir.join("out.txt")).expect("out.txt should exist");
     assert_eq!(text(&written), text(&console.stdout));
-    assert!(text(&written).contains("Proceso:\n1. 13a. Condicional: q ∨ ¬p\n"));
+    assert!(text(&written).contains("Proceso:\n0. Original: p → q\n1. 13a. Condicional: q ∨ ¬p\n"));
 
     let _ = std::fs::remove_dir_all(&dir);
 }

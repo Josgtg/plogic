@@ -833,7 +833,7 @@ opciones:
 
     #[test]
     fn version_is_the_package_name_and_version() {
-        assert_eq!(version(), "plogic 0.1.0\n");
+        assert_eq!(version(), "plogic 1.0.0\n");
     }
 
     #[test]
