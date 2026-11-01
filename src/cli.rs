@@ -12,7 +12,7 @@ use std::path::Path;
 
 use colored::Colorize;
 
-use crate::args::{self, Config, Input};
+use crate::args::{self, Config, Input, Simplification};
 use crate::error::Error;
 use crate::orchestrator::Orchestrator;
 use crate::truth_table::{Classification, TruthTable};
@@ -63,19 +63,33 @@ fn run_file(path: &Path, config: &Config) -> i32 {
 }
 
 /// Evaluates one source text (a single proposition or a whole file) and
-/// writes its tables. `numbered` adds the file-mode `Proposición n:` heading.
+/// writes its tables, or its simplified formulas with `--simplificar`.
+/// `numbered` adds the file-mode `Proposición n:` heading.
 fn run_source(source: String, config: &Config, numbered: bool) -> i32 {
-    let tables = match Orchestrator::evaluate(source, config.simplify, config.table_simplified) {
-        Ok(tables) => tables,
-        Err(errors) => return report_errors(&errors),
-    };
-    let redirect = config.output.is_none() && oversized(&tables);
-    let color = config.output.is_none() && !redirect && table_colors();
-    let output = render(&tables, numbered, color);
-    write_output(&output, config.output.as_deref(), redirect)
+    match config.simplification {
+        Simplification::Formula => {
+            let formulas = match Orchestrator::simplify(source) {
+                Ok(formulas) => formulas,
+                Err(errors) => return report_errors(&errors),
+            };
+            let output = render_formulas(&formulas, numbered);
+            write_output(&output, config.output.as_deref(), false)
+        }
+        Simplification::Table | Simplification::Disabled => {
+            let simplify = matches!(config.simplification, Simplification::Table);
+            let tables = match Orchestrator::evaluate(source, simplify) {
+                Ok(tables) => tables,
+                Err(errors) => return report_errors(&errors),
+            };
+            let redirect = config.output.is_none() && oversized(&tables);
+            let color = config.output.is_none() && !redirect && table_colors();
+            let output = render(&tables, numbered, color);
+            write_output(&output, config.output.as_deref(), redirect)
+        }
+    }
 }
 
-/// Writes the run's presentation: to the `-s` path, to `plogic-output.txt`
+/// Writes the run's presentation: to the `-o` path, to `plogic-output.txt`
 /// when a table is oversized, or to stdout.
 fn write_output(output: &str, path: Option<&Path>, redirect: bool) -> i32 {
     let destination = match (path, redirect) {
@@ -117,6 +131,23 @@ fn render(tables: &[TruthTable], numbered: bool, color: bool) -> String {
                 format!("Proposición {}:\n\n{presented}", index + 1)
             } else {
                 presented
+            }
+        })
+        .collect();
+    blocks.join("\n")
+}
+
+/// The formula-only presentation of `--simplificar`: one `Simplificada:` line
+/// per proposition, separated by a blank line, with the file-mode heading.
+fn render_formulas(formulas: &[String], numbered: bool) -> String {
+    let blocks: Vec<String> = formulas
+        .iter()
+        .enumerate()
+        .map(|(index, formula)| {
+            if numbered {
+                format!("Proposición {}:\n\nSimplificada: {formula}\n", index + 1)
+            } else {
+                format!("Simplificada: {formula}\n")
             }
         })
         .collect();
@@ -246,15 +277,30 @@ fn run_interactive(config: &Config) -> i32 {
         if trimmed == "exit" || trimmed == "salir" {
             return 0;
         }
-        match Orchestrator::evaluate(line, config.simplify, config.table_simplified) {
-            Ok(tables) => {
-                let color = table_colors();
-                for table in &tables {
-                    print!("{}", present(table, color));
+        match config.simplification {
+            Simplification::Formula => match Orchestrator::simplify(line) {
+                Ok(formulas) => {
+                    for formula in &formulas {
+                        println!("Simplificada: {formula}");
+                    }
                 }
-            }
-            Err(errors) => {
-                report_errors(&errors);
+                Err(errors) => {
+                    report_errors(&errors);
+                }
+            },
+            Simplification::Table | Simplification::Disabled => {
+                let simplify = matches!(config.simplification, Simplification::Table);
+                match Orchestrator::evaluate(line, simplify) {
+                    Ok(tables) => {
+                        let color = table_colors();
+                        for table in &tables {
+                            print!("{}", present(table, color));
+                        }
+                    }
+                    Err(errors) => {
+                        report_errors(&errors);
+                    }
+                }
             }
         }
         println!();

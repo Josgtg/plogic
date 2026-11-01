@@ -2,9 +2,9 @@
 //! builds its truth table (`design/interpreter.md`).
 //!
 //! Pure and never constructed. It evaluates the expression it receives; the
-//! Orchestrator chooses the original by default or the simplified one with
-//! `--tabla-simplificada`, and the Interpreter does not know which one it is
-//! evaluating (ADR-017). The only failure is the size limit: more than 4096
+//! Orchestrator chooses the simplified one by default or the original with
+//! `--no-simplificar`, and the Interpreter does not know which one it is
+//! evaluating (ADR-046). The only failure is the size limit: more than 4096
 //! rows is refused before any row is enumerated (ADR-011).
 
 use std::collections::HashMap;

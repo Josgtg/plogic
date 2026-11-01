@@ -39,11 +39,11 @@ const OPTIONS_HEADING: &str = "opciones";
     next_line_help = false
 )]
 pub struct Args {
-    /// evalúa una proposición
+    /// evalúa una proposición (entre comillas)
     #[arg(value_name = "proposición", help_heading = ARGUMENTS_HEADING)]
     pub texto: Option<String>,
 
-    /// evalúa una proposición
+    /// evalúa una proposición (entre comillas)
     #[arg(
         short = 'p',
         long = "proposicion",
@@ -69,13 +69,13 @@ pub struct Args {
     #[arg(long = "no-simplificar", help_heading = OPTIONS_HEADING)]
     pub no_simplificar: bool,
 
-    /// construye la tabla con la expresión simplificada
-    #[arg(long = "tabla-simplificada", help_heading = OPTIONS_HEADING)]
-    pub tabla_simplificada: bool,
+    /// muestra solo la proposición simplificada
+    #[arg(short = 's', long = "simplificar", help_heading = OPTIONS_HEADING)]
+    pub simplificar: bool,
 
     /// escribe la salida en <archivo>
     #[arg(
-        short = 's',
+        short = 'o',
         long = "salida",
         value_name = "archivo",
         help_heading = OPTIONS_HEADING
@@ -128,11 +128,20 @@ pub enum Input {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Config {
     pub input: Input,
-    /// False with `--no-simplificar`.
-    pub simplify: bool,
-    pub table_simplified: bool,
-    /// `-s` / `--salida`.
+    pub simplification: Simplification,
+    /// `-o` / `--salida`.
     pub output: Option<PathBuf>,
+}
+
+/// What a run shows and which expression it evaluates (`design/ui.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Simplification {
+    /// `--no-simplificar`: no Simplifier, the table is the original formula.
+    Disabled,
+    /// The default: simplify and build the table from the simplified formula.
+    Table,
+    /// `--simplificar`: print the simplified formula only, with no table.
+    Formula,
 }
 
 /// A usage error: the CLI prints [`UsageError::message`], a blank line and the
@@ -150,9 +159,9 @@ pub enum UsageError {
     UnexpectedArgument(String),
     /// `no se proporcionó ninguna proposición`
     NoProposition,
-    /// `'--tabla-simplificada' no se puede usar con '--no-simplificar'`
-    TableSimplifiedWithNoSimplify,
-    /// `'-s' no se puede usar con '--interactivo'`
+    /// `'--simplificar' no se puede usar con '--no-simplificar'`
+    SimplifyWithNoSimplify,
+    /// `'-o' no se puede usar con '--interactivo'`
     OutputWithInteractive,
 }
 
@@ -165,11 +174,11 @@ impl UsageError {
             UsageError::SeveralModes => "solo se puede usar un modo a la vez".to_string(),
             UsageError::UnexpectedArgument(arg) => format!("argumento inesperado: '{arg}'"),
             UsageError::NoProposition => "no se proporcionó ninguna proposición".to_string(),
-            UsageError::TableSimplifiedWithNoSimplify => {
-                "'--tabla-simplificada' no se puede usar con '--no-simplificar'".to_string()
+            UsageError::SimplifyWithNoSimplify => {
+                "'--simplificar' no se puede usar con '--no-simplificar'".to_string()
             }
             UsageError::OutputWithInteractive => {
-                "'-s' no se puede usar con '--interactivo'".to_string()
+                "'-o' no se puede usar con '--interactivo'".to_string()
             }
         }
     }
@@ -197,7 +206,7 @@ pub(crate) fn bright_red(text: &str) -> String {
 impl Args {
     /// Applies the plogic rules to the parsed command line, in the order
     /// ADR-027 fixes: modes, extra positional, missing proposition,
-    /// `--tabla-simplificada`, `-s` with `--interactivo`.
+    /// `--simplificar` with `--no-simplificar`, and `-o` with `--interactivo`.
     pub fn into_config(self) -> Result<Config, UsageError> {
         let modes = [
             self.proposicion.is_some(),
@@ -229,17 +238,24 @@ impl Args {
             return Err(UsageError::NoProposition);
         };
 
-        if self.tabla_simplificada && self.no_simplificar {
-            return Err(UsageError::TableSimplifiedWithNoSimplify);
+        if self.simplificar && self.no_simplificar {
+            return Err(UsageError::SimplifyWithNoSimplify);
         }
         if self.salida.is_some() && self.interactivo {
             return Err(UsageError::OutputWithInteractive);
         }
 
+        let simplification = if self.simplificar {
+            Simplification::Formula
+        } else if self.no_simplificar {
+            Simplification::Disabled
+        } else {
+            Simplification::Table
+        };
+
         Ok(Config {
             input,
-            simplify: !self.no_simplificar,
-            table_simplified: self.tabla_simplificada,
+            simplification,
             output: self.salida.map(PathBuf::from),
         })
     }
@@ -288,8 +304,8 @@ const FLAGS: &[(&str, Option<char>)] = &[
     ("archivo", Some('a')),
     ("interactivo", Some('i')),
     ("no-simplificar", None),
-    ("tabla-simplificada", None),
-    ("salida", Some('s')),
+    ("simplificar", Some('s')),
+    ("salida", Some('o')),
 ];
 
 /// The tokens before the first `--`, as lossy strings.
@@ -324,9 +340,9 @@ fn consumes_next_token(token: &str) -> bool {
     short_flag_without_value(token).is_some()
 }
 
-/// The short options that take a value: `-p`, `-a` and `-s`.
+/// The short options that take a value: `-p`, `-a` and `-o`.
 fn takes_value(name: &str) -> bool {
-    short_of(name).is_some_and(|flag| matches!(flag, 'p' | 'a' | 's'))
+    short_of(name).is_some_and(|flag| matches!(flag, 'p' | 'a' | 'o'))
 }
 
 /// For a short-option token (`-s`, or a cluster such as `-is`), the short flag
@@ -337,7 +353,7 @@ fn short_flag_without_value(token: &str) -> Option<char> {
         return None;
     }
     for (index, flag) in rest.char_indices() {
-        if matches!(flag, 'p' | 'a' | 's') {
+        if matches!(flag, 'p' | 'a' | 'o') {
             return (index + flag.len_utf8() == rest.len()).then_some(flag);
         }
     }
@@ -404,7 +420,9 @@ fn typed_flag(long: &str, raw: &[OsString]) -> String {
             return typed;
         }
         if let Some(flag) = short.as_deref()
-            && short_flag_without_value(&token).is_some_and(|c| c.to_string() == flag)
+            && token.starts_with('-')
+            && !token.starts_with("--")
+            && token.chars().any(|c| c.to_string() == flag)
         {
             typed = format!("-{flag}");
         }
@@ -439,15 +457,28 @@ mod tests {
     }
 
     #[test]
-    fn bare_argument_is_a_proposition() {
+    fn bare_argument_is_a_proposition_evaluated_with_the_default_table() {
         assert_eq!(
             config(&["p -> q"]),
             Config {
                 input: proposition("p -> q"),
-                simplify: true,
-                table_simplified: false,
+                simplification: Simplification::Table,
                 output: None,
             }
+        );
+    }
+
+    #[test]
+    fn simplification_flags_choose_the_mode() {
+        assert_eq!(config(&["p"]).simplification, Simplification::Table);
+        assert_eq!(
+            config(&["--no-simplificar", "p"]).simplification,
+            Simplification::Disabled
+        );
+        assert_eq!(config(&["-s", "p"]).simplification, Simplification::Formula);
+        assert_eq!(
+            config(&["--simplificar", "p"]).simplification,
+            Simplification::Formula
         );
     }
 
@@ -475,35 +506,50 @@ mod tests {
 
     #[test]
     fn modifiers_combine() {
-        let parsed = config(&["-p", "p", "--no-simplificar", "-s", "out.txt"]);
-        assert!(!parsed.simplify);
-        assert!(!parsed.table_simplified);
+        let parsed = config(&["-p", "p", "--no-simplificar"]);
+        assert_eq!(parsed.simplification, Simplification::Disabled);
+        assert_eq!(parsed.output, None);
+
+        let parsed = config(&["p", "-o", "out.txt"]);
+        assert_eq!(parsed.simplification, Simplification::Table);
         assert_eq!(parsed.output, Some(PathBuf::from("out.txt")));
 
-        let parsed = config(&["p", "--tabla-simplificada", "--salida", "out.txt"]);
-        assert!(parsed.simplify);
-        assert!(parsed.table_simplified);
+        let parsed = config(&["-p", "p", "--salida", "out.txt", "-s"]);
+        assert_eq!(parsed.simplification, Simplification::Formula);
         assert_eq!(parsed.output, Some(PathBuf::from("out.txt")));
 
-        assert!(!config(&["-i", "--no-simplificar"]).simplify);
-        assert!(config(&["-i", "--tabla-simplificada"]).table_simplified);
+        assert_eq!(
+            config(&["-i", "--no-simplificar"]).simplification,
+            Simplification::Disabled
+        );
+        assert_eq!(
+            config(&["-i", "-s"]).simplification,
+            Simplification::Formula
+        );
     }
 
     #[test]
     fn short_flags_cluster_and_take_attached_values() {
-        // `-is out.txt` parses as both `-i` and `-s`, which the design refuses
-        // before it reaches a run.
+        // `-is` is `-i` plus the boolean `-s`, so the next token is not its
+        // value. With `-i` a bare positional is an extra argument.
         assert_eq!(
-            error(&["-is", "out.txt"]),
-            UsageError::OutputWithInteractive
+            error(&["-is", "p"]),
+            UsageError::UnexpectedArgument("p".to_string())
         );
         assert_eq!(
             config(&["-sp", "q"]),
             Config {
                 input: proposition("q"),
-                simplify: true,
-                table_simplified: false,
-                output: Some(PathBuf::from("p")),
+                simplification: Simplification::Formula,
+                output: None,
+            }
+        );
+        assert_eq!(
+            config(&["-is"]),
+            Config {
+                input: Input::Interactive,
+                simplification: Simplification::Formula,
+                output: None,
             }
         );
     }
@@ -539,7 +585,11 @@ mod tests {
             error(&["--proposicion"]),
             UsageError::MissingValue("--proposicion".to_string())
         );
-        assert_eq!(error(&["-s"]), UsageError::MissingValue("-s".to_string()));
+        assert_eq!(error(&["-o"]), UsageError::MissingValue("-o".to_string()));
+        assert_eq!(
+            error(&["--salida"]),
+            UsageError::MissingValue("--salida".to_string())
+        );
         assert_eq!(
             error(&["-p", "--", "p"]),
             UsageError::MissingValue("-p".to_string())
@@ -548,7 +598,10 @@ mod tests {
             error(&["-p", "-s", "x"]),
             UsageError::MissingValue("-p".to_string())
         );
-        assert_eq!(error(&["-is"]), UsageError::MissingValue("-s".to_string()));
+        assert_eq!(
+            error(&["-o", "-i"]),
+            UsageError::MissingValue("-o".to_string())
+        );
     }
 
     #[test]
@@ -565,12 +618,20 @@ mod tests {
         assert_eq!(error(&["-i", "-i"]), UsageError::SeveralModes);
         assert_eq!(error(&["-a", "f", "-a", "g"]), UsageError::SeveralModes);
         assert_eq!(
-            error(&["-s", "a", "-s", "b"]),
+            error(&["-s", "-s"]),
             UsageError::UnexpectedArgument("-s".to_string())
+        );
+        assert_eq!(
+            error(&["--simplificar", "--simplificar"]),
+            UsageError::UnexpectedArgument("--simplificar".to_string())
         );
         assert_eq!(
             error(&["--no-simplificar", "--no-simplificar"]),
             UsageError::UnexpectedArgument("--no-simplificar".to_string())
+        );
+        assert_eq!(
+            error(&["-o", "a", "-o", "b"]),
+            UsageError::UnexpectedArgument("-o".to_string())
         );
     }
 
@@ -601,10 +662,8 @@ mod tests {
     fn nothing_to_evaluate() {
         assert_eq!(error(&[]), UsageError::NoProposition);
         assert_eq!(error(&["--no-simplificar"]), UsageError::NoProposition);
-        assert_eq!(
-            error(&["--tabla-simplificada", "-s", "out.txt"]),
-            UsageError::NoProposition
-        );
+        assert_eq!(error(&["-s"]), UsageError::NoProposition);
+        assert_eq!(error(&["-s", "-o", "out.txt"]), UsageError::NoProposition);
         assert_eq!(error(&[""]), UsageError::NoProposition);
         assert_eq!(error(&["   "]), UsageError::NoProposition);
         assert_eq!(error(&["-p", ""]), UsageError::NoProposition);
@@ -614,40 +673,31 @@ mod tests {
     #[test]
     fn conflicting_modifiers() {
         assert_eq!(
-            error(&["p", "--tabla-simplificada", "--no-simplificar"]),
-            UsageError::TableSimplifiedWithNoSimplify
+            error(&["p", "-s", "--no-simplificar"]),
+            UsageError::SimplifyWithNoSimplify
         );
         assert_eq!(
-            error(&["-s", "out.txt", "-i"]),
+            error(&["-o", "out.txt", "-i"]),
+            UsageError::OutputWithInteractive
+        );
+        assert_eq!(
+            error(&["-i", "-o", "out.txt"]),
             UsageError::OutputWithInteractive
         );
     }
 
     #[test]
-    fn precedence_puts_table_conflict_before_output_conflict() {
+    fn precedence_puts_the_simplify_conflict_before_the_output_conflict() {
         assert_eq!(
-            error(&[
-                "-i",
-                "-s",
-                "out.txt",
-                "--tabla-simplificada",
-                "--no-simplificar"
-            ]),
-            UsageError::TableSimplifiedWithNoSimplify
+            error(&["-i", "-o", "out.txt", "-s", "--no-simplificar"]),
+            UsageError::SimplifyWithNoSimplify
         );
     }
 
     #[test]
     fn precedence_puts_unknown_flag_first() {
         assert_eq!(
-            error(&[
-                "-i",
-                "-s",
-                "out.txt",
-                "--tabla-simplificada",
-                "--no-simplificar",
-                "-x"
-            ]),
+            error(&["-i", "-o", "out.txt", "-s", "--no-simplificar", "-x"]),
             UsageError::UnknownFlag("-x".to_string())
         );
         assert_eq!(
@@ -702,15 +752,15 @@ plogic: evalúa proposiciones de lógica proposicional
 uso: plogic [opciones] [proposición]
 
 argumentos:
-  [proposición]  evalúa una proposición
+  [proposición]  evalúa una proposición (entre comillas)
 
 opciones:
-  -p, --proposicion <texto>  evalúa una proposición
+  -p, --proposicion <texto>  evalúa una proposición (entre comillas)
   -a, --archivo <archivo>    evalúa una proposición por línea
   -i, --interactivo          inicia una sesión interactiva
       --no-simplificar       no simplifica la proposición
-      --tabla-simplificada   construye la tabla con la expresión simplificada
-  -s, --salida <archivo>     escribe la salida en <archivo>
+  -s, --simplificar          muestra solo la proposición simplificada
+  -o, --salida <archivo>     escribe la salida en <archivo>
   -h, --help                 muestra esta ayuda
   -V, --version              muestra la versión
 "
@@ -739,12 +789,12 @@ opciones:
             "no se proporcionó ninguna proposición"
         );
         assert_eq!(
-            error(&["p", "--tabla-simplificada", "--no-simplificar"]).message(),
-            "'--tabla-simplificada' no se puede usar con '--no-simplificar'"
+            error(&["p", "--simplificar", "--no-simplificar"]).message(),
+            "'--simplificar' no se puede usar con '--no-simplificar'"
         );
         assert_eq!(
-            error(&["-s", "out.txt", "-i"]).message(),
-            "'-s' no se puede usar con '--interactivo'"
+            error(&["-o", "out.txt", "-i"]).message(),
+            "'-o' no se puede usar con '--interactivo'"
         );
     }
 
