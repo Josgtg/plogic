@@ -120,7 +120,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/scanner.rs` | the scanner: source text to tokens |
 | `src/expression.rs` | the AST: `Expression`, `ASTPrinter` and `InfixPrinter` |
 | `src/parser.rs` | the parser: tokens to one `Expression` per proposition |
-| `src/simplifier.rs` | the simplifier: canonical rewrites to an equivalent expression |
+| `src/simplifier.rs` | the simplifier: canonical rewrites, with the applied steps |
 | `src/interpreter.rs` | the interpreter: evaluation and truth-table construction |
 | `src/truth_table.rs` | the `TruthTable`, `Row` and `Classification` result types |
 | `src/orchestrator.rs` | the pipeline driver: `evaluate`, `simplify` and `report` |

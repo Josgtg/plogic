@@ -41,6 +41,8 @@ Modifiers:
   evaluates the original proposition.
 - `-s`, `--simplificar` — simplify and print only the `Simplificada:` formula, with no
   truth table and no classification. It cannot be combined with `--no-simplificar`.
+- `-m`, `--mostrar-proceso` — print the ordered list of laws the Simplifier applied,
+  under a `Proceso:` heading. It cannot be combined with `--no-simplificar`.
 - `-o`, `--salida <path>` — write the output to a file instead of the console.
 
 `-h` / `--help` prints the help screen on stdout and exits 0: the usage line
@@ -50,7 +52,7 @@ parser prints them when it reaches them, so `plogic --help -x` shows the help bu
 `plogic -x --help` is an unknown-flag error, and `plogic -- --help` evaluates the
 proposition `--help`.
 
-`-o` cannot be combined with `--interactivo`, and `-s` cannot be combined with
+`-o` cannot be combined with `--interactivo`; `-s` and `-m` cannot be combined with
 `--no-simplificar`. With no proposition at all (including a
 modifier-only invocation), more than one mode flag, an unknown flag, a missing flag
 value, an extra positional argument, or a single proposition that is empty after
@@ -119,7 +121,9 @@ grouping the proposition was written in, with redundant parentheses removed, and
 By default the table evaluates the simplified formula: its variables, rows, size check
 and label all come from it. With `--no-simplificar` the table evaluates the original
 proposition instead. The classification is printed in every case. With
-`-s` / `--simplificar` only the simplified formula is printed, with no table.
+`-s` / `--simplificar` only the simplified formula is printed, with no table. With
+`-m` / `--mostrar-proceso`, a `Proceso:` block lists the laws the Simplifier applied, in
+order, each with the formula it produced; it is omitted when no law applied.
 
 `plogic 'p -> q'` prints:
 
