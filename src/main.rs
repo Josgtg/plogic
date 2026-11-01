@@ -2,6 +2,7 @@ mod args;
 mod cli;
 mod error;
 mod expression;
+mod gui;
 mod interpreter;
 mod orchestrator;
 mod parser;
@@ -14,6 +15,13 @@ use std::ffi::OsString;
 
 fn main() {
     let argv: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if gui::should_launch(&argv) {
+        if gui::run().is_err() {
+            eprintln!("{}", gui::STARTUP_ERROR);
+            std::process::exit(1);
+        }
+        return;
+    }
     match args::parse(argv) {
         Ok(config) => std::process::exit(cli::run(config)),
         Err(error) => {
