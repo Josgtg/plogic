@@ -35,17 +35,17 @@ interface UI
 
 note bottom of TruthTable
   One column per distinct variable of the evaluated
-  expression (the original by default, the simplified one
-  with --tabla-simplificada), in order of first
+  expression (the simplified one by default, the original
+  with --no-simplificar), in order of first
   appearance; one row per assignment (2^n), in binary
   counting order with the last variable varying fastest.
 
   The result column is labelled with the evaluated
-  expression in normalized form: the operand order the
-  user wrote for the original, canonical order for the
-  simplified formula. simplified is present only when the
-  Simplifier ran and uses canonical order; with
-  --tabla-simplificada it repeats the label. Both texts
+  expression in normalized form: canonical order for the
+  simplified formula, the operand order the user wrote
+  for the original. simplified is present only when the
+  Simplifier ran and uses canonical order; it repeats the
+  label when the table is the simplified one. Both texts
   are produced by InfixPrinter. with_display returns a new
   table; there are no setters, and the fields are public
   plain data (ADR-043). An empty table is a contingency.

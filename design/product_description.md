@@ -48,10 +48,10 @@ none: it parses exactly as it reads. When grouping does matter they appear —
 `(p o q) y r` displays as `(p ∨ q) ∧ r`, because without them `∧` would bind
 to `q` first; `(p -> q) -> r` keeps its parentheses, while `p -> (q -> r)`
 prints as `p → q → r`, because implication is right-associative. The result
-column keeps the operand order the user wrote; the optional `Simplificada:`
-line shows the simplified formula in canonical order (see simplifier.md).
-With `--tabla-simplificada` the result column is labelled with the simplified
-formula instead, and the `Simplificada:` line repeats it.
+column is labelled with the expression being tabulated: the simplified
+formula in canonical order by default, or the original proposition with
+`--no-simplificar`; the `Simplificada:` line shows that same canonical
+formula (see simplifier.md).
 
 In this project, a proposition is composed of literals, connectives and
 identifiers:
@@ -118,9 +118,9 @@ column contains only `F` is a **contradiction**; anything else is a
 **contingency**. Plogic always reports the classification.
 
 The variables, rows and 4096-row limit come from the expression being
-tabulated. By default that is the original proposition; `--tabla-simplificada`
-tabulates the simplified expression instead, so the columns can shrink (a
-formula that simplifies to `V` or `F` has no variable columns at all).
+tabulated. By default that is the simplified expression, so the columns can
+shrink (a formula that simplifies to `V` or `F` has no variable columns at
+all); with `--no-simplificar` the original proposition is tabulated instead.
 
 ## Simplification
 
@@ -132,8 +132,10 @@ an equivalence transformation: the reduced formula has the same truth table
 as the original and no greater weight, strictly lower whenever a rewrite
 applies, though not necessarily fewer connectives (De Morgan and the
 biconditional expansion can add some). By default the truth table is built
-from the original proposition and the reduced formula is shown for reference;
-`--tabla-simplificada` builds the table from the reduced formula instead.
+from the reduced formula and the formula is shown as a `Simplificada:` line;
+`--no-simplificar` builds the table from the original and omits that line.
+`-s` / `--simplificar` simplifies and prints only the reduced formula, with
+no table.
 
 ## Errors
 

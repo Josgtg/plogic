@@ -69,9 +69,9 @@ For example, `q & p & !p & (r | s) & V` sorts to
 `q`, then `!p`, then the `|` chain.
 
 Canonical order is internal to the Simplifier. It shows in the simplified
-formula; the original proposition is labelled with the operand order the user
-wrote (see truth_table.md). With `--tabla-simplificada` the label is the
-simplified formula, so it is in canonical order too.
+formula; with `--no-simplificar` the original proposition is labelled with
+the operand order the user wrote (see truth_table.md). By default the label
+is the simplified formula, so it is in canonical order.
 
 This document writes the laws with `!`, `&`, `|`, `->` and `<->` because
 they are easier to type; the user-facing display uses `¬`, `∧`, `∨`, `→` and

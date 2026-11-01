@@ -33,13 +33,16 @@ end note
 
 note bottom of UI
   present() prints, in order: the simplified formula
-  (when simplification ran), the aligned truth table,
-  and always the classification line, with a blank line
-  between items. With --tabla-simplificada the table
-  label is the simplified formula and the first line
-  repeats it. Interactive sessions never redirect; every
+  (when simplification ran, the default), the aligned
+  truth table, and always the classification line, with a
+  blank line between items. With --no-simplificar the
+  first line is omitted and the table is the original.
+  With --simplificar only the Simplificada: line is
+  printed, with no table and no classification.
+  Interactive sessions never redirect; every
   non-interactive run may redirect to plogic-output.txt
-  when a table exceeds 1024 rows. In a terminal, only the
+  when a table exceeds 1024 rows (never with
+  --simplificar). In a terminal, only the
   V/F cells of the table are colored (V green, F red);
   the message of an error is bright red on stderr;
   file output is plain.

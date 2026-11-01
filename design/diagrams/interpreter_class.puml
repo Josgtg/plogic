@@ -43,10 +43,10 @@ enum Error {
 
 note bottom of Interpreter
   Pure and never constructed. Evaluates the expression
-  it receives; the Orchestrator chooses the original by
-  default or the simplified one with
-  --tabla-simplificada, and the Interpreter does not
-  know which one it is evaluating.
+  it receives; the Orchestrator chooses the simplified
+  one by default or the original with --no-simplificar,
+  and the Interpreter does not know which one it is
+  evaluating.
 
   1. Collect the distinct variables of the received
      expression in order of first appearance.

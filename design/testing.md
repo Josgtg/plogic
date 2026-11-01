@@ -126,25 +126,23 @@ Property tests over generated expressions:
 
 ## 5. Orchestrator
 
-- Default table: the original expression decides variables, rows, size check
-  and label. `p -> q` gives columns `p, q`, label `p → q`, and simplified text
+- Default table: the simplified expression decides variables, rows, size check
+  and label. `p -> q` gives columns `q, p`, label `q ∨ ¬p`, and simplified text
   `q ∨ ¬p`.
-- `table_simplified = true`: the simplified expression decides everything.
-  `p -> q` gives columns `q, p`, label `q ∨ ¬p`, and a simplified line that
-  repeats it.
-- `p | !p` default: columns `p`, rows `F` and `V`, result all `V`, label
-  `p ∨ ¬p`, simplified text `V`, classification tautology.
-  With `table_simplified = true`: no variable columns, one row, label `V`,
-  simplified text `V`.
+- `simplify = false`: the original expression decides everything. `p -> q`
+  gives columns `p, q`, label `p → q`, no simplified text, and the same
+  results as the default.
+- `p | !p` default: no variable columns, one row, label `V`, simplified text
+  `V`, classification tautology. With `simplify = false`: columns `p`, rows `F`
+  and `V`, result all `V`, label `p ∨ ¬p`, no simplified text.
 - A 13-variable original that simplifies to `V` (for example
-  `p1 | !p1 | p2 | ... | p13`): the default returns
-  `Err([EvalError("resultado muy largo: más de 4096 filas")])`; with
-  `table_simplified = true` it succeeds with one row.
-- `simplify = false` skips the Simplifier: the table still has no
-  `Simplificada:` text, and the results match `simplify = true`.
-- `simplify = false, table_simplified = true` ignores `table_simplified` and
-  produces exactly the same table as `simplify = false, table_simplified =
-  false` (ADR-026).
+  `p1 | !p1 | p2 | ... | p13`): the default succeeds with one row; with
+  `simplify = false` it returns
+  `Err([EvalError("resultado muy largo: más de 4096 filas")])`.
+- `Orchestrator.simplify` (formula-only): `p -> q` returns `["q ∨ ¬p"]`; the
+  13-variable tautology returns `["V"]` without the size check; batch order is
+  input order; an empty source returns `Ok([])`; scan and parse errors gate it
+  exactly like `evaluate`.
 - Stage gates: a scan error returns no parse errors; a parse error returns no
   tables; an eval error returns no tables.
 - Mixed error kinds never appear in one `Err` list.
@@ -167,8 +165,8 @@ Property tests over generated expressions:
   exit 2; ADR-034): no argument,
   modifier-only invocation, two mode flags, unknown flag, missing flag value,
   extra positional argument, empty `-p ''` / bare empty string, a single
-  proposition that is whitespace only, `-s` with `-i`, and
-  `--tabla-simplificada` with `--no-simplificar`.
+  proposition that is whitespace only, `-o` with `-i`, and
+  `-s` with `--no-simplificar`.
 - Dash-prefixed arguments: `-x` and `->` are `opción desconocida`; `--`
   followed by `->` passes it through as a proposition, which then fails at
   parse time with `se esperaba una expresión`; `plogic -p p --` is valid;
@@ -177,39 +175,43 @@ Property tests over generated expressions:
   extra-positional usage error. A proposition with surrounding spaces
   (`-p '  p  '`) still scans normally.
 - Repeated flags (ADR-031): `-p p -p q`, `-i -i` and `-a f -a g` report
-  `solo se puede usar un modo a la vez`; `-s a -s b` reports
-  `argumento inesperado: '-s'` and `--no-simplificar --no-simplificar` reports
-  `argumento inesperado: '--no-simplificar'`; all exit 2.
-- Usage-error precedence: `-x -i -s out.txt` reports
-  `opción desconocida: '-x'` (unknown flag before the `-s` conflict);
-  `-i -s out.txt --tabla-simplificada --no-simplificar` reports
-  `'--tabla-simplificada' no se puede usar con '--no-simplificar'` before
-  `'-s' no se puede usar con '--interactivo'`, and prints exactly one message.
+  `solo se puede usar un modo a la vez`; `-s -s` reports
+  `argumento inesperado: '-s'`, `--no-simplificar --no-simplificar` reports
+  `argumento inesperado: '--no-simplificar'`, and `-o a -o b` reports
+  `argumento inesperado: '-o'`; all exit 2.
+- Usage-error precedence: `-x -i -o out.txt` reports
+  `opción desconocida: '-x'` (unknown flag before the `-o` conflict);
+  `-i -o out.txt -s --no-simplificar` reports
+  `'--simplificar' no se puede usar con '--no-simplificar'` before
+  `'-o' no se puede usar con '--interactivo'`, and prints exactly one message.
   A `-p` missing its value wins over the extra positional that follows.
 - Exact strings: a table-driven test asserts the layout of a usage error — the
   specific message, a blank line, then the exact help screen from `ui.md` — for
   `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`,
   `solo se puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
-  `no se proporcionó ninguna proposición`, and the two conflict messages, with
-  exit 2; the read/write messages with exit 1; and the redirect notification
+  `no se proporcionó ninguna proposición`, and the two conflict messages
+  (`'--simplificar' no se puede usar con '--no-simplificar'` and
+  `'-o' no se puede usar con '--interactivo'`), with exit 2; the read/write
+  messages with exit 1; and the redirect notification
   `la salida se escribió en plogic-output.txt` on stderr.
 - Exit codes: 0 on success or help/version, 1 on any failing run (scan, parse,
   evaluation, an empty file, or an I/O failure), 2 usage.
 - Empty and blank-only files: `el archivo no contiene proposiciones`, exit 1.
-- Output: tables on stdout, errors on stderr; `-s` writes the file and
-  leaves stdout empty; a failing run with `-s` writes nothing and leaves an
+- Output: tables on stdout, errors on stderr; `-o` writes the file and
+  leaves stdout empty; a failing run with `-o` writes nothing and leaves an
   existing file untouched.
-- `-s` wins over the automatic `plogic-output.txt` name: an 11-variable
-  proposition above 1024 rows with `-s path` writes `path` and not
+- `-o` wins over the automatic `plogic-output.txt` name: an 11-variable
+  proposition above 1024 rows with `-o path` writes `path` and not
   `plogic-output.txt`.
 - Automatic redirect: a non-interactive run (single proposition or file) with
   a table above 1024 rows writes `plogic-output.txt` and notifies; a table of
   exactly 1024 rows does not redirect; an interactive session never redirects.
   The threshold uses the table's expression:
-  `(p1 | !p1) & p2 & ... & p11` redirects by default (11 variables, 2048
-  rows) but not with `--tabla-simplificada` (10 variables, 1024 rows);
-  `(p1 | !p1) & p2 & ... & p13` fails by default (13 variables, 8192 rows) and
-  succeeds with `--tabla-simplificada` (12 variables, 4096 rows).
+  `(p1 | !p1) & p2 & ... & p11` does not redirect by default (the simplified
+  table has 10 variables, 1024 rows) but does with `--no-simplificar` (11
+  variables, 2048 rows); `(p1 | !p1) & p2 & ... & p13` succeeds by default
+  (12 variables, 4096 rows) and fails with `--no-simplificar` (13 variables,
+  8192 rows).
 - Presentation: `present` separates the simplified line, the table and the
   classification with blank lines; with `--no-simplificar` only the blank line
   between the table and the classification remains (ADR-029).
@@ -220,15 +222,20 @@ Property tests over generated expressions:
 - File mode numbering: each block starts with `Proposición n:` and a blank
   line, blocks are separated by one blank line, the counter counts only built
   tables, and single-proposition mode has no heading (ADR-045).
-- `--tabla-simplificada` combines with `-s`; `--no-simplificar` omits only the
-  `Simplificada:` line, never the classification.
+- `-s` / `--simplificar` prints only `Simplificada: <formula>`, with no table
+  and no classification, in every mode; it combines with `-o` and with the
+  file-mode numbering, never triggers the automatic redirect, and conflicts
+  with `--no-simplificar`.
+- `--no-simplificar` omits only the `Simplificada:` line, never the
+  classification.
 - I/O failures: an unreadable input prints
   `no se pudo leer el archivo '<path>': <detalle>` and exits 1; an unwritable
   output prints `no se pudo escribir el archivo '<path>': <detalle>` and exits
   1.
 - Interactive: a blank or whitespace-only line shows a prompt again, `exit`,
-  `salir` and Ctrl-D all end the session, an error does not end it. Both
-  modifiers apply to every line; using them together is a usage error. A
+  `salir` and Ctrl-D all end the session, an error does not end it.
+  `--no-simplificar` and `--simplificar` apply to every line; using them
+  together is a usage error. A
   presentation or an error is followed by a blank line before the next prompt;
   Ctrl-D prints one newline after the pending prompt, while `exit`/`salir` add
   none (ADR-045).
@@ -238,8 +245,8 @@ Property tests over generated expressions:
 - `((p o (q y s)) entonces t) sisolosi (q o 0)` runs end to end and its label
   reads `p ∨ q ∧ s → t ↔ q ∨ F`.
 - `(p o q) y r` is labelled `(p ∨ q) ∧ r`.
-- With `--tabla-simplificada`, the product example's table label is the
-  simplified formula, not the original.
+- The table label is the simplified formula, not the original.
+- With `--no-simplificar`, the table label is the original proposition.
 - Round trip: for any source, parsing the printed label gives an equivalent
   formula — `parse(print(parse(source)))` has the same truth column. This is
   the property that catches a missing pair of parentheses in `InfixPrinter`;

@@ -28,7 +28,7 @@ ADR-nnn`.
 | 014 | I/O errors live outside the `Error` model | Accepted |
 | 015 | Two printers: `ASTPrinter` and `InfixPrinter` | Accepted |
 | 016 | 1-based positions, columns counted in characters | Accepted |
-| 017 | Default tabulates the original; `--tabla-simplificada` tabulates the simplified | Accepted |
+| 017 | Default tabulates the original; `--tabla-simplificada` tabulates the simplified | Superseded by ADR-046 |
 | 018 | Erase `Grouping` before simplification | Accepted |
 | 019 | Stage results carry `List<Error>`; helpers carry one error | Accepted |
 | 020 | Immutable `TruthTable` with `with_display` | Accepted |
@@ -37,7 +37,7 @@ ADR-nnn`.
 | 023 | Simplification lowers weight, not necessarily connective count | Accepted |
 | 024 | Dash-prefixed arguments are options; `--` ends option parsing; trim blank propositions | Accepted |
 | 025 | Parser rule failures carry the `ParseState` | Accepted |
-| 026 | `table_simplified` is ignored when `simplify` is false | Accepted |
+| 026 | `table_simplified` is ignored when `simplify` is false | Superseded by ADR-046 |
 | 027 | Fixed precedence for usage errors | Accepted |
 | 028 | `--` is an optional trailing separator | Accepted |
 | 029 | Blank lines separate the presented sections | Accepted |
@@ -57,6 +57,7 @@ ADR-nnn`.
 | 043 | Interpreter and truth-table details: borrowed expression, public fields | Accepted |
 | 044 | Orchestrator arguments are owned | Accepted |
 | 045 | CLI layout details: free functions, alignment, numbering and separators | Accepted |
+| 046 | Simplified tables by default; `-s` prints only the simplified formula | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1221,6 +1222,47 @@ self-describing, and the REPL leaves a clean line at Ctrl-D. The layout rules
 live in `ui.md` and are exercised through the binary; the CLI-only decisions
 (no trailing spaces, numbering only in file mode) cost nothing to change later
 because they are presentation, not data.
+
+## ADR-046 — Simplified tables by default; `-s` prints only the simplified formula
+
+Status: Accepted
+
+Context: The product wants the simplified formula and the table of that
+simplified formula to be the default, with `--no-simplificar` as the way to
+tabulate the original. That inverts ADR-017 (original by default,
+`--tabla-simplificada` for the simplified table) and makes
+`--tabla-simplificada` redundant. A new `-s`/`--simplificar` mode was also
+asked for: print only the simplified formula, with no table. The short `-s`
+was already `--salida` (ADR-013), and the surface has not been published, so
+it can change.
+
+Decision: The default simplifies and builds the table from the simplified
+expression: variables, rows, the 4096-row check and the result-column label
+all come from it, and the `Simplificada:` line repeats that label.
+`--no-simplificar` disables the Simplifier, tabulates the original and omits
+the line. `-s`/`--simplificar` simplifies and prints only
+`Simplificada: <formula>`, with no table and no classification; it works in
+every mode, composes with `-o` and with file numbering, never triggers the
+automatic redirect, and conflicts with `--no-simplificar`
+(`'--simplificar' no se puede usar con '--no-simplificar'`). The output flag
+moves to `-o`/`--salida`; its conflict message becomes
+`'-o' no se puede usar con '--interactivo'`. `--tabla-simplificada` is
+removed. `Orchestrator.evaluate` becomes `evaluate(source, simplify)` and
+always tabulates the chosen tree; a new `Orchestrator.simplify(source)`
+returns the normalized formulas and builds no tables, so the size limit does
+not apply to `--simplificar`.
+
+Alternatives: keep the original table by default and add only the new flag
+(contradicts the request); keep both `-s` meanings (impossible); print the
+table with `--simplificar` and let the flag only affect the table (not what
+was asked); keep `--tabla-simplificada` as a deprecated alias (a redundant
+flag with no user).
+
+Consequences: the default output now shows the small, canonical table, and
+`--no-simplificar` is the escape hatch that preserves the user's own formula
+and variable order. The CLI surface breaks once, before publication. The
+formula-only mode is the cheapest path through the pipeline (no interpreter,
+no table, no size limit) and is available in the interactive session too.
 
 ## Errata
 

@@ -8,8 +8,8 @@ size limit below.
 
 `Interpreter.interpret(expression: &Expression): Result<TruthTable, List<Error>>`
 walks the AST recursively with an environment mapping variable names to truth
-values. The Orchestrator chooses which expression it receives: the original by
-default, or the simplified one with `--tabla-simplificada` (ADR-017). The
+values. The Orchestrator chooses which expression it receives: the simplified
+one by default, or the original with `--no-simplificar`. The
 Interpreter itself does not know which one it is evaluating. It takes the tree
 by reference, since it only reads it (ADR-043).
 
@@ -29,7 +29,7 @@ It evaluates each node as follows:
 
 1. Collect the distinct variables of the expression it received, in order of
    first appearance (an in-order walk of the AST). This is the column order,
-   and with `--tabla-simplificada` it is the simplified expression's variable
+   and by default it is the simplified expression's variable
    order, not the original's.
 2. Enumerate all 2^n truth assignments in binary counting order: the last
    variable varies fastest. For `p`, `q` the rows are `F F`, `F V`, `V F`,
@@ -50,5 +50,5 @@ before any row is enumerated: `interpret` returns
 error_handling.md). With `n` distinct variables, the check is `n > 12`
 (equivalently `2^n > 4096`, written so the count cannot overflow), so at most
 12 variables are accepted. Because the variables come from the expression the
-Interpreter receives, the default checks the original proposition and
-`--tabla-simplificada` checks the simplified one (ADR-017).
+Interpreter receives, the default checks the simplified proposition and
+`--no-simplificar` checks the original.

@@ -16,7 +16,7 @@ interface UI {
 class CLI
 
 class Orchestrator {
-  +{static} evaluate(source: str, simplify: bool, table_simplified: bool): Result<List<TruthTable>, List<Error>>
+  +{static} evaluate(source: str, simplify: bool): Result<List<TruthTable>, List<Error>>
   +{static} report(error: Error): str
 }
 

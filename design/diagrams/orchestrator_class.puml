@@ -8,7 +8,8 @@ interface UI {
 }
 
 class Orchestrator {
-  +{static} evaluate(source: str, simplify: bool, table_simplified: bool): Result<List<TruthTable>, List<Error>>
+  +{static} evaluate(source: str, simplify: bool): Result<List<TruthTable>, List<Error>>
+  +{static} simplify(source: str): Result<List<str>, List<Error>>
   +{static} report(error: Error): str
 }
 
@@ -36,16 +37,17 @@ note bottom of Orchestrator
   an EvalError stops the whole run. Steps 6-9 repeat
   once per parsed proposition.
 
-  Step 8 tabulates the original expression by default,
-  or the simplified one with --tabla-simplificada.
-  With simplify = false, table_simplified is ignored
-  and the original is tabulated (ADR-026).
+  Step 8 tabulates the simplified expression by
+  default, or the original with --no-simplificar.
+  simplify() stops after simplification, returns the
+  formula texts and builds no tables, so no size
+  limit applies (--simplificar).
   evaluate() adds each table's display text through
-  TruthTable.with_display: the evaluated expression in
+  TruthTable.with_display: the tabulated expression in
   the label and, when simplification ran, the simplified
   formula in canonical order (InfixPrinter). report() is
-  a pure formatter for the CLI. evaluate() and report()
-  take their source and error by value (ADR-044).
+  a pure formatter for the CLI. All three take their
+  owned argument by value (ADR-044, ADR-046).
 end note
 
 UI --> Orchestrator

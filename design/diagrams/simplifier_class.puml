@@ -60,9 +60,9 @@ note right of Expression
   5. | chain
   6. ->, 7. <->
   This order is internal to the Simplifier and shows
-  in the simplified formula. The original label keeps
-  the written order; with --tabla-simplificada the
-  label is the simplified formula and is canonical too.
+  in the simplified formula. The original label (with
+  --no-simplificar) keeps the written order; the
+  simplified label is canonical too.
 end note
 
 Orchestrator ..> Simplifier : <<use>>
