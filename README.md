@@ -3,11 +3,11 @@
 A propositional logic evaluator: it reads propositions, simplifies them, and builds a
 truth table for each one.
 
-> **Status: implemented.** The language, the pipeline and the CLI are fully designed in
-> [`design/`](design/) and implemented: the CLI argument parser, the token vocabulary, the
-> scanner, the parser, the syntax tree with its two printers, the simplifier, the
-> interpreter with the truth table, the orchestrator and the wired CLI. Everything below
-> documents the behavior.
+> **Status: implemented.** The language, the pipeline, the CLI and the GUI are fully
+> designed in [`design/`](design/) and implemented: the CLI argument parser, the token
+> vocabulary, the scanner, the parser, the syntax tree with its two printers, the
+> simplifier, the interpreter with the truth table, the orchestrator, the wired CLI and
+> the egui window. Everything below documents the behavior.
 
 ## Build and run
 
@@ -25,6 +25,9 @@ cargo install --path .
 ```
 
 ## Usage
+
+Running `plogic` with no arguments at all opens the graphical window. With any
+argument or flag, the command-line modes below apply.
 
 Three modes, chosen by flag. A bare argument is evaluated as a single proposition.
 
@@ -53,11 +56,10 @@ parser prints them when it reaches them, so `plogic --help -x` shows the help bu
 proposition `--help`.
 
 `-o` cannot be combined with `--interactivo`; `-s` and `-m` cannot be combined with
-`--no-simplificar`. With no proposition at all (including a
-modifier-only invocation), more than one mode flag, an unknown flag, a missing flag
-value, an extra positional argument, or a single proposition that is empty after
-trimming, plogic prints the reason followed by the full help screen and exits with code
-2. The two conflicts above are usage errors too.
+`--no-simplificar`. With no proposition at all (a modifier-only invocation), more than
+one mode flag, an unknown flag, a missing flag value, an extra positional argument, or a
+single proposition that is empty after trimming, plogic prints the reason followed by the
+full help screen and exits with code 2. The two conflicts above are usage errors too.
 
 Every argument that begins with `-` is a flag, except `--`, so `plogic ->` is an
 unknown-flag error. `--` ends flag parsing and is never a flag value: a following argument
@@ -81,6 +83,18 @@ In interactive mode each line is evaluated on its own and presented immediately;
 line reports its errors without ending the session, and `exit`, `salir` or Ctrl-D ends
 it. `--no-simplificar` and `--simplificar` apply to every line, but using them together
 is a usage error.
+
+## Graphical window
+
+`plogic` with no arguments opens a dark, monospace window that evaluates one proposition
+at a time. Its help lists the accepted connective and literal spellings. The
+`Simplificar`, `Mostrar tabla` and `Mostrar proceso` controls select the next evaluation
+and which result parts are shown; the toolbar inserts connectives, parentheses and
+variables; and `Evaluar` produces separate cards for the simplified (or original)
+formula, the optional process list, a real truth table and the classification. The whole
+window scrolls. Editing the formula does not replace the previous result: only `Evaluar`
+does. Files, interactive mode and `-o` remain CLI-only. If the window cannot open,
+plogic prints `no se pudo iniciar la interfaz gráfica` on stderr and exits 1.
 
 ## The language
 

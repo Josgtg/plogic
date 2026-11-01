@@ -15,8 +15,9 @@ scanner (`src/scanner.rs`), the abstract syntax tree with its two printers
 (`src/expression.rs`), the parser (`src/parser.rs`), the simplifier
 (`src/simplifier.rs`), the interpreter with the truth table (`src/interpreter.rs`,
 `src/truth_table.rs`), the orchestrator (`src/orchestrator.rs`) and the wired CLI
-(`src/cli.rs`) are all in place. Implement against `design/`: the book supplies the
-algorithms, but the design documents win wherever the two differ.
+(`src/cli.rs`) and the GUI (`src/gui.rs`) are all in place. Implement against
+`design/`: the book supplies the algorithms, but the design documents win wherever the
+two differ.
 
 ## How to help me design
 
@@ -59,14 +60,15 @@ These hold for every change; they are decided, not open for reinterpretation:
   (`ScanState`, `ParseState`) and returned anew.
 - **Errors are values**: fallible stage entry points (`Scanner.scan`, `Parser.parse`,
   `Interpreter.interpret`, `Orchestrator.evaluate`) return `Result<T, List<Error>>`;
-  `Simplifier.simplify` is total and returns `Expression`. Internal helpers return
+  `Simplifier.simplify` is total and returns `Simplification`. Internal helpers return
   `Result<T, Error>`; parser rules and their `consume` helper are the exceptions,
   returning `Result<T, (Error, ParseState)>` so recovery resumes from the failing
   token, and `TokenType.map` returns `Result<TokenType, str>`. The stage collects
   helper errors.
   No exceptions, no panics, no error sink, no flags. Stages recover maximally inside
   themselves and gate hard between stages.
-- **Purity**: only the UI/CLI performs I/O. The Orchestrator and every stage are pure.
+- **Purity**: only the UI (CLI and GUI) performs I/O. The Orchestrator and every stage
+  are pure.
 - **User-facing text is Spanish**; error messages and prompts are lower-case and say
   what was expected; result labels keep normal capitalization. Positions are 1-based.
 - **Rust**: edition 2024. Do not add dependencies without asking. Keep `cargo clippy`
@@ -96,6 +98,10 @@ The runtime stack is deliberately small:
   message of an error (bright red, on a terminal only; ADR-035). Formulas,
   labels, classification, the help screen and the output written to a file stay
   plain.
+- **eframe 0.37** (egui) opens the graphical window when plogic runs with no
+  arguments. It is pure Rust with no webview; the `gui` module calls the
+  Orchestrator and builds the formula, process, truth-table and classification
+  cards (ADR-048).
 
 Any other dependency needs a decision first.
 
@@ -114,7 +120,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 
 | Path | Contents |
 | --- | --- |
-| `src/main.rs` | CLI entry point (the only impure code) |
+| `src/main.rs` | entry point: bare invocation opens the GUI, any argument runs the CLI |
 | `src/tokens.rs` | the token vocabulary: `TokenType`, `Token` and `TokenType::map` |
 | `src/error.rs` | the shared `Error` enum and its `Display` |
 | `src/scanner.rs` | the scanner: source text to tokens |
@@ -125,6 +131,7 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/truth_table.rs` | the `TruthTable`, `Row` and `Classification` result types |
 | `src/orchestrator.rs` | the pipeline driver: `evaluate`, `simplify` and `report` |
 | `src/cli.rs` | the UI/CLI: I/O, presentation, error colors |
+| `src/gui.rs` | the GUI: window, controls, result cards and the eframe entry point |
 | `src/args.rs` | argument parsing: `Args`, `parse`, `Config` and `UsageError` |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |
@@ -154,7 +161,8 @@ with its tests from `design/testing.md`.
 `design/diagrams/` holds the PlantUML sources: `class_diagram.puml`,
 `relationships_diagram.puml`, `components_diagram.puml`, the per-stage files
 `scanner_class.puml`, `parser_class.puml`, `simplifier_class.puml`,
-`interpreter_class.puml`, `orchestrator_class.puml` and `ui_class.puml`, plus
-`expression_class.puml` and `truth_table_class.puml` (a result type, not a stage). They
+`interpreter_class.puml`, `orchestrator_class.puml`, `ui_class.puml` and
+`gui_class.puml`, plus `expression_class.puml` and `truth_table_class.puml` (a result
+type, not a stage). They
 mirror the design documents; update them when a signature or relationship changes, and
 verify with `plantuml -checkonly`.
