@@ -11,6 +11,8 @@ use std::io::{self, BufRead, IsTerminal, Write};
 use std::path::Path;
 
 use colored::Colorize;
+use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 
 use crate::args::{self, Config, Input, Simplification};
 use crate::error::Error;
@@ -303,14 +305,66 @@ fn report_errors(errors: &[Error]) -> i32 {
     1
 }
 
+/// The prompt of the interactive session.
+const PROMPT: &str = "> ";
+
 /// The read-eval-print session: one proposition per line, presented as it
 /// arrives. `exit`, `salir` and end-of-input end it; a blank line only shows a
 /// new prompt (`design/ui.md`).
+///
+/// On a terminal the line is read with the rustyline editor, so the arrows move
+/// the caret and Up/Down walk this session's history (ADR-054). When the input
+/// is a pipe or a file — the test harness, a redirected file — the plain
+/// reader is used instead, so the session behaves exactly as it did and the
+/// prompt stays on stdout.
 fn run_interactive(config: &Config) -> i32 {
+    if io::stdin().is_terminal() {
+        run_edited(config)
+    } else {
+        run_piped(config)
+    }
+}
+
+/// The session over an editor: rustyline draws the prompt, handles the arrows,
+/// the history and Ctrl-D, and returns the line without its newline.
+///
+/// Ctrl-C cancels the line and shows a fresh prompt; the session is sticky by
+/// design and only `exit`, `salir` or Ctrl-D end it.
+fn run_edited(config: &Config) -> i32 {
+    let mut editor = match DefaultEditor::new() {
+        Ok(editor) => editor,
+        Err(error) => {
+            eprintln!("no se pudo iniciar la entrada interactiva: {error}");
+            return 1;
+        }
+    };
+    loop {
+        match editor.readline(PROMPT) {
+            Ok(line) => {
+                // Blank lines are not worth recalling with Up.
+                if !line.trim().is_empty() {
+                    let _ = editor.add_history_entry(line.as_str());
+                }
+                if let Some(code) = session_line(line, config) {
+                    return code;
+                }
+            }
+            Err(ReadlineError::Interrupted) => continue,
+            Err(ReadlineError::Eof) => return 0,
+            Err(error) => {
+                eprintln!("no se pudo leer la entrada: {error}");
+                return 1;
+            }
+        }
+    }
+}
+
+/// The session over a piped or redirected input, read line by line.
+fn run_piped(config: &Config) -> i32 {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
     loop {
-        print!("> ");
+        print!("{PROMPT}");
         let _ = io::stdout().flush();
         let Some(line) = lines.next() else {
             println!();
@@ -323,37 +377,47 @@ fn run_interactive(config: &Config) -> i32 {
                 return 1;
             }
         };
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
+        if let Some(code) = session_line(line, config) {
+            return code;
         }
-        if trimmed == "exit" || trimmed == "salir" {
-            return 0;
-        }
-        match config.simplification {
-            Simplification::Formula => match Orchestrator::simplify(line) {
-                Ok(formulas) => {
-                    print!("{}", render_formulas(&formulas, false, config.show_process));
+    }
+}
+
+/// Evaluates one session line and prints its result. `None` keeps the session
+/// going; `Some(code)` ends it with that exit code. A blank line does nothing,
+/// and `exit` / `salir` end the session (`design/ui.md`).
+fn session_line(line: String, config: &Config) -> Option<i32> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed == "exit" || trimmed == "salir" {
+        return Some(0);
+    }
+    match config.simplification {
+        Simplification::Formula => match Orchestrator::simplify(line) {
+            Ok(formulas) => {
+                print!("{}", render_formulas(&formulas, false, config.show_process));
+            }
+            Err(errors) => {
+                report_errors(&errors);
+            }
+        },
+        Simplification::Table | Simplification::Disabled => {
+            let simplify = matches!(config.simplification, Simplification::Table);
+            match Orchestrator::evaluate(line, simplify) {
+                Ok(evaluations) => {
+                    let color = table_colors();
+                    for evaluation in &evaluations {
+                        print!("{}", present(evaluation, color, config.show_process));
+                    }
                 }
                 Err(errors) => {
                     report_errors(&errors);
                 }
-            },
-            Simplification::Table | Simplification::Disabled => {
-                let simplify = matches!(config.simplification, Simplification::Table);
-                match Orchestrator::evaluate(line, simplify) {
-                    Ok(evaluations) => {
-                        let color = table_colors();
-                        for evaluation in &evaluations {
-                            print!("{}", present(evaluation, color, config.show_process));
-                        }
-                    }
-                    Err(errors) => {
-                        report_errors(&errors);
-                    }
-                }
             }
         }
-        println!();
     }
+    println!();
+    None
 }

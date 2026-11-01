@@ -103,6 +103,10 @@ The runtime stack is deliberately small:
   Orchestrator and builds the centered formula, process, truth-table and
   classification components in one scrolling column (ADR-048, ADR-049,
   ADR-051).
+- **rustyline 19** edits the interactive session's lines on a terminal: arrow
+  movement, Up/Down history for the session only (`default-features = false`,
+  so `MemHistory` and no file history) and Ctrl-D handling (ADR-054). A pipe
+  or redirect keeps the plain reader, so the prompt and output do not change.
 
 Any other dependency needs a decision first.
 
