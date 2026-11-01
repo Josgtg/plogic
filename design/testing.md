@@ -206,7 +206,7 @@ Property tests over generated expressions:
 
 - Modes: bare argument, `-p`, `-a`, `-i`.
 - Help and version: `-h` and `--help` print the exact help screen from
-  `ui.md` on stdout and exit 0; `-V` and `--version` print `plogic 0.1.0` and
+  `ui.md` on stdout and exit 0; `-V` and `--version` print `plogic 1.0.0` and
   exit 0. The parser prints them when it reaches them (ADR-033): an earlier
   error wins, so `-x --help` and `-p --help` are usage errors, while
   `--help -x`, `-hV` and `--help --version` print the help, and `-V --help`

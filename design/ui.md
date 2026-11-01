@@ -116,7 +116,7 @@ belongs to, so a new argument appears in the help without a second list to
 maintain. The usage line is the compact `uso: plogic [opciones]
 [proposición]`, and every description is lower-case, like the error messages.
 
-`-V` / `--version` prints exactly `plogic 0.1.0` on stdout and exits 0. Neither
+`-V` / `--version` prints exactly `plogic 1.0.0` on stdout and exits 0. Neither
 flag is a mode. Both are handled by the command-line parser, which prints them
 when it reaches them: an error raised by an earlier argument wins, so
 `plogic -x --help` and `plogic -p --help` are usage errors, while
