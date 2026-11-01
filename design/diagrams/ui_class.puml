@@ -18,7 +18,8 @@ class Orchestrator
 class TruthTable
 
 note bottom of CLI
-  The only impure component. It parses the command
+  The CLI is one of the two impure UI components; bare
+  `plogic` opens the GUI (gui_class.puml). It parses the command
   line (-p, -a, -i, -s, -m, -o, -h, -V and their long
   forms in ui.md), renders the help screen from the
   argument definitions, reads and writes files and

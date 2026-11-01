@@ -15,6 +15,11 @@ interface UI {
 
 class CLI
 
+class GUI {
+  +{static} should_launch(argv: List<OsString>): bool
+  +{static} run(): Result
+}
+
 class Orchestrator {
   +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
   +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
@@ -182,6 +187,7 @@ enum Classification {
 
 CLI ..|> UI
 CLI --> Orchestrator
+GUI --> Orchestrator
 
 Orchestrator ..> Scanner : <<use>>
 Orchestrator ..> Parser : <<use>>

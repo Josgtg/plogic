@@ -59,6 +59,7 @@ ADR-nnn`.
 | 045 | CLI layout details: free functions, alignment, numbering and separators | Accepted |
 | 046 | Simplified tables by default; `-s` prints only the simplified formula | Accepted |
 | 047 | The Simplifier returns its applied steps, shown with `-m` | Accepted |
+| 048 | A graphical window opens on a bare `plogic`, built with egui/eframe | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1312,6 +1313,69 @@ may also show canonical reordering performed after the law. The core keeps its
 purity: the trace is data, and only the CLI turns it into text. The extra
 allocation is small for these trees, and callers that do not care about the
 trace use `simplification.expression`.
+## ADR-048 — A graphical window opens on a bare `plogic`
+
+Status: Accepted
+
+Context: plogic was CLI-only, and running it with no argument was the
+`no se proporcionó ninguna proposición` usage error. The mockup in
+`design/gui-design.png` asks for a single-window evaluator with help, mode
+controls, a formula field, connector buttons and a result area. The GUI must
+reuse the pipeline and the Spanish presentation, not fork the language. The
+CLI has three relevant controls: simplification (on by default, off with
+`--no-simplificar`), the table (always in table mode), and the process list
+(`-m`).
+
+Decision: Running `plogic` with no arguments at all opens a native window built
+with egui/eframe 0.37. Any argument, flag included, keeps the CLI exactly as it
+is; a modifier-only invocation is still a usage error. The GUI evaluates one
+proposition at a time. Its layout is a centered column in a single vertically
+scrollable window: title, help, three controls, the formula field, the
+insertion toolbar, `Evaluar`, and then the result components in the same flow.
+There is no fixed output box: the whole window scrolls and each result part is
+its own card. The help is a compact two-group list of the formal symbol, the
+Spanish name and the other spellings, at a slightly smaller size than the body.
+
+The controls are `Simplificar` (default on; the next evaluation uses the
+simplified expression), `Mostrar tabla` (default on) and `Mostrar proceso`
+(default off). They are independent: there is no separate `no simplificar`
+control, and unchecking `Simplificar` is how the original is evaluated. The
+table and process controls are display choices over the stored result, so they
+apply immediately; editing the formula, inserting a symbol, clearing it or
+changing `Simplificar` does not replace the result. Only `Evaluar` (or Enter in
+the formula field) replaces it. The formula card is titled `Simplificada` when
+the stored result was simplified and `Original` otherwise. The process card is
+omitted when the stored evaluation has no steps. The table card is a real
+table with centered `V`/`F` cells (green and red), a header row above the
+body, a horizontal scroll for wide tables, and all rows in the window flow. The classification
+card carries the usual Spanish sentence and color. Pipeline errors replace the
+result with an error card; an empty formula evaluated with `Evaluar` reports
+`no se proporcionó ninguna proposición` there. The toolbar inserts
+`¬ ∧ ∨ → ↔ ( )` at the cursor and a variable button inserts the next unused
+letter from p to z; the help lists the accepted spellings.
+
+The window is dark and monospace, fixed to the mockup's theme, with
+Ubuntu-Light as the fallback for logic symbols. If it cannot open, plogic
+prints `no se pudo iniciar la interfaz gráfica` on stderr and exits 1; the
+backend error is not user-facing.
+
+Alternatives: Iced (more boilerplate for this form), Slint (a second UI
+language and licensing), Tauri (webview and Node toolchain), a separate
+binary or a `--gui` flag (the request is bare `plogic`), full CLI parity in the
+GUI (files, interactive mode and `-o` stay CLI concerns), a fixed result panel
+(the component cards are the requested presentation), and automatic
+re-evaluation on every edit (the user asked for `Evaluar` to be the only
+replace point).
+
+Consequences: eframe adds a native windowing stack, a large dependency tree and
+build time, and a larger binary. The bare-invocation contract changes, so the
+CLI test plan no longer treats a bare run as a usage error; `args::parse([])`
+keeps returning `NoProposition` as the pure parser's contract, but `main`
+intercepts it first. The GUI is a second impure UI component; the core stays
+pure. The window cannot be exercised headlessly, so state transitions and the
+pure helpers are tested directly and the visual components are checked by eye.
+Large tables make a long window; the CLI remains the way to write huge tables to
+a file.
 
 ## Errata
 
@@ -1367,3 +1431,11 @@ trace use `simplification.expression`.
   no proposition, the two conflicts.
 - ADR-024's "at most one positional after `--`" is refined by ADR-028: `--` may
   be trailing, it is never a flag value, and `plogic -p p --` is valid.
+- ADR-042's "`Simplifier.simplify` stays total and returns `Expression`" is
+  changed by ADR-047: it is still total, but returns
+  `Simplification { expression, steps }`. The rewrite rules, order and canonical
+  form are unchanged.
+- ADR-048's "next unused letter from p to z" skips `y`: `y` is reserved as the
+  conjunction word and can never be an identifier. `o` is before `p` and is not
+  a candidate. `p` is returned when every usable letter is used; the test for
+  the all-letters case is the reason this clarification exists.

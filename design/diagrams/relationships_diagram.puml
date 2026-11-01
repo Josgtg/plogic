@@ -8,6 +8,8 @@ interface UI
 
 class CLI
 
+class GUI
+
 class Orchestrator
 enum TokenType
 class Token
@@ -35,6 +37,7 @@ class InfixPrinter
 
 CLI ..|> UI
 CLI --> Orchestrator
+GUI --> Orchestrator
 
 Orchestrator ..> Scanner : <<use>>
 Orchestrator ..> Parser : <<use>>
@@ -79,5 +82,6 @@ Interpreter ..> TruthTable : <<create>>
 TruthTable --> Row : rows
 TruthTable --> Classification : classify
 UI ..> TruthTable : <<use>>
+GUI ..> TruthTable : <<use>>
 
 @enduml

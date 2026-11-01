@@ -2,6 +2,7 @@
 title plogic - Components diagram
 
 component "UI" as UI
+component "GUI" as GUI
 component "Orchestrator" as Orchestrator
 component "Scanner" as Scanner
 component "Parser" as Parser
@@ -9,9 +10,17 @@ component "Simplifier" as Simplifier
 component "Interpreter" as Interpreter
 
 note top of UI
-  The only impure component: reads the command line,
-  files and terminal, and presents one truth table
-  per proposition with its classification.
+  The CLI is one of the two impure UI components: it
+  reads the command line, files and terminal, and
+  presents one truth table per proposition with its
+  classification.
+end note
+
+note top of GUI
+  Bare `plogic` opens this window. It evaluates one
+  proposition and builds cards for the formula, the
+  optional process, the truth table and the
+  classification, with no fixed output box.
 end note
 
 note bottom of Scanner
@@ -41,6 +50,9 @@ end note
 
 UI -down-> Orchestrator : 1. source text
 Orchestrator -up-> UI #2E7D32 : 10. truth tables
+
+GUI -down-> Orchestrator : source text
+Orchestrator -up-> GUI #2E7D32 : evaluations
 
 Orchestrator -down-> Scanner : 2. source
 Scanner -up-> Orchestrator #2E7D32 : 3. tokens

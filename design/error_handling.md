@@ -7,7 +7,7 @@ are normal input, not crashes.
 
 - Errors are values, never exceptions or panics.
 - Failure is signalled by `Err`, never by an empty table or a flag.
-- Only the UI/CLI is impure.
+- Only the UI (CLI and GUI) is impure.
 - The payload convention is defined below: stages carry a list, helpers carry
   one error (parser rules additionally carry the state, ADR-025).
 

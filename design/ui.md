@@ -1,16 +1,18 @@
 # Plogic - UI / CLI design
 
-Role: the only impure component. It receives propositions, drives the
-Orchestrator and presents results. `CLI` implements the `UI` interface,
-which is unchanged: `receive_file(path)`, `receive_proposition(proposition)`,
-`start_interactive()`, `present(table)`.
-
-It presents all its content in Spanish.
+Role: the impure UI. `CLI` implements the `UI` interface, which is unchanged:
+`receive_file(path)`, `receive_proposition(proposition)`, `start_interactive()`
+and `present(table)`. The GUI in [gui.md](gui.md) is a second impure UI
+component that calls the Orchestrator directly. Both present their content in
+Spanish.
 
 ## Modes — explicit flags
 
-The CLI has the following flags. With no mode flag, one bare argument is
-evaluated as a proposition (single proposition mode):
+A bare `plogic` (no arguments at all) does not reach this CLI: it opens the
+graphical window in [gui.md](gui.md). Every invocation with at least one
+argument — a flag, a proposition, `-h`, `-V` or `--` — keeps the behavior
+below. The CLI has the following flags. With no mode flag, one bare argument
+is evaluated as a proposition (single proposition mode):
 
 | Flag | Mode | Maps to |
 | --- | --- | --- |
@@ -41,8 +43,8 @@ repeats that label. With `--no-simplificar` the table is built from the
 original proposition. The classification is shown in both cases.
 
 The mode, modifier and output flag names are Spanish. `--help` and `--version`
-keep their conventional English names. With no mode and no proposition (a bare
-invocation or a modifier-only invocation), more than one mode flag, an unknown
+keep their conventional English names. With no mode and no proposition (a
+modifier-only invocation), more than one mode flag, an unknown
 flag, a missing flag value, an extra positional argument, or a single
 proposition that is empty after trimming, the CLI prints a usage message and
 exits with code 2.
@@ -67,6 +69,17 @@ exists (`plogic -p p --`), while `plogic -p -- p` reports
 trimmed; if nothing remains, the CLI prints `no se proporcionó ninguna
 proposición` and exits 2. Only the emptiness check uses the trimmed value; the
 scanner receives the original text.
+
+## Graphical window
+
+Running `plogic` with no arguments opens the window in [gui.md](gui.md). It
+evaluates one proposition at a time. `Simplificar` selects the expression for
+the next evaluation (`--no-simplificar` is unchecking it), while `Mostrar
+tabla` and `Mostrar proceso` show or hide their cards over the stored result.
+The result is a set of separate cards below the proposition block, and the
+whole window scrolls. Editing, inserting or clearing the formula, or changing
+`Simplificar`, does not replace the stored result; only `Evaluar` does. The
+CLI modes `-a`, `-i` and `-o` are not available in the GUI.
 
 ## Help and version
 
@@ -109,7 +122,7 @@ when it reaches them: an error raised by an earlier argument wins, so
 ## File mode
 
 `receive_file(path)` is where file mode starts: the CLI reads the file (it
-is the impure component) and passes the text to `Orchestrator.evaluate` (or
+is one of the impure UI components) and passes the text to `Orchestrator.evaluate` (or
 `Orchestrator.simplify` with `--simplificar`), so the Orchestrator stays
 pure. A file with no propositions — empty, or only blank lines — is not
 evaluated: the CLI prints `el archivo no contiene proposiciones` on stderr

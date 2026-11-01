@@ -14,12 +14,26 @@ by Robert Nystrom, implementing a functional programming style rather than pure 
 - Evaluating a single proposition.
 - Evaluating a file, with one proposition per line.
 - Interactive mode: write a proposition and get its truth table immediately.
+- A graphical window, opened by running `plogic` with no arguments, that
+  evaluates one proposition at a time.
 - Simplifying a proposition.
 - Producing the truth table of each proposition, optionally from its
   simplified form.
 - Writing the output to a file — on request, or automatically when a truth
   table is long.
 - Spanish UI.
+
+## Graphical window
+
+Running `plogic` with no arguments opens a dark, monospace window for one
+proposition at a time. Its help lists the accepted connectives and literals;
+the `Simplificar`, `Mostrar tabla` and `Mostrar proceso` controls choose the
+next evaluation and which result parts are shown; the toolbar inserts
+connectives, parentheses and variables; and `Evaluar` produces separate cards
+for the simplified (or original) formula, the optional process list, a real
+truth table and the classification. The window scrolls as a whole. Editing the
+formula does not replace the previous result: only `Evaluar` does. Any
+argument keeps the command-line interface.
 
 ## What is a proposition?
 

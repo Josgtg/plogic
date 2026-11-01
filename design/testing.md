@@ -6,7 +6,8 @@ every case below comes from a promise made in one of them.
 
 Levels 1–5 test the pure core and live next to the code (`#[cfg(test)]`
 modules). Level 6 tests the CLI as a process (integration tests, one binary
-invocation per case). Level 7 covers the product examples end to end.
+invocation per case). Level 7 covers the product examples end to end. Level 8
+covers the GUI's state and pure helpers; the rendered window is checked by eye.
 
 ## 1. Tokens and scanner
 
@@ -171,8 +172,8 @@ Property tests over generated expressions:
   `--help -x`, `-hV` and `--help --version` print the help, and `-V --help`
   prints the version. `-- --help` is a proposition.
 - Strict usage errors (message, blank line and the full help screen on stderr,
-  exit 2; ADR-034): no argument,
-  modifier-only invocation, two mode flags, unknown flag, missing flag value,
+  exit 2; ADR-034): modifier-only invocation, two mode flags, unknown flag,
+  missing flag value,
   extra positional argument, empty `-p ''` / bare empty string, a single
   proposition that is whitespace only, `-o` with `-i`,
   `-s` with `--no-simplificar`, and `-m` with `--no-simplificar`.
@@ -272,6 +273,61 @@ Property tests over generated expressions:
   formula — `parse(print(parse(source)))` has the same truth column. This is
   the property that catches a missing pair of parentheses in `InfixPrinter`;
   the implication cases are `(p -> q) -> r` and `p -> (q -> r)`.
+
+## 8. Graphical window
+
+The window itself is not launched in automated tests. `main` dispatches on
+`gui::should_launch`; `args::parse([])` keeps its `NoProposition` unit test
+because the binary intercepts the empty list before calling it. The GUI state
+and the pure helpers live in `src/gui.rs` and are tested there; the rendered
+components are checked by eye.
+
+- Entry: `should_launch` is true only for an empty argument list; false for a
+  bare proposition, `-p`, `-a`, `-i`, `-h`, `-V`, `-m`, `--` and a
+  modifier-only invocation. `STARTUP_ERROR` is exactly
+  `no se pudo iniciar la interfaz gráfica`; the headless path is a manual
+  smoke test (run with no display, check stderr and exit 1).
+- Default state: `simplify` true, `show_table` true, `show_process` false, no
+  outcome, empty input.
+- Evaluate `p -> q` with the defaults: one evaluation, `Simplificada:
+  q ∨ ¬p`, one `13a. Condicional` step, table label `q ∨ ¬p`, contingency.
+  The formula card's title is `Simplificada`; the process card is absent while
+  `show_process` is off; the table card has `q`, `p` and `Resultado` columns.
+- Evaluate with `simplify` false: the table has `p` and `q`, label `p → q`,
+  no simplified formula; the formula card's title is `Original`; there is no
+  process card.
+- Toggles: `show_table` false hides only the table card (formula and
+  classification stay); `show_process` true shows the process card when the
+  stored evaluation has steps and omits it when it has none. The controls are
+  independent; no toggle disables another.
+- Result lifetime: after one evaluation, changing the input, inserting a
+  symbol, pressing `Limpiar`, or changing `simplify` leaves the outcome
+  unchanged. Only `evaluate`/Enter replaces it. `Limpiar` clears the input and
+  cursor only.
+- Empty input: `evaluate` on an empty or whitespace-only field sets the error
+  array to `no se proporcionó ninguna proposición`; it does not clear the
+  field. A scan or parse error replaces the result with one red report line per
+  error, and a later `evaluate` replaces it again.
+- Helpers: `next_variable` on an empty field gives `p`, on `p` gives `q`, on
+  `p & q` gives `r`, skips `y` (reserved for conjunction), and gives `p` when
+  every usable letter is used or the formula does not scan. `byte_index` maps
+  character indices to UTF-8 byte offsets;
+  insertion replaces a selection and leaves the cursor after the inserted
+  text. `value_cell` maps true to `V`/green and false to `F`/red; the
+  classification mapping is tautology/green, contradiction/red,
+  contingency/muted.
+- Table data: one column per `table.variables`, one row per `table.rows`, a
+  header of the variables plus `Resultado`, and `2^variables` rows. The table
+  is a real grid, horizontally scrollable when needed; the window is the only
+  vertical scroll. The visual layout (centered cells, alternating rows, fixed
+  header) is checked by eye.
+- Help: the compact list has the rows `¬ negación !, no`, `∧ conjunción &, y`,
+  `∨ disyunción |, o`, `→ implicación ->, entonces`, `↔ bicondicional
+  <->, sisolosi`, `V verdadero 1` and `F falso 0`, at a smaller size than the
+  body.
+- CLI: the integration suite never runs the binary with no arguments (that
+  would open a window); `-p ''` and modifier-only invocations still cover the
+  `NoProposition` usage error.
 
 ## What is not automated
 
