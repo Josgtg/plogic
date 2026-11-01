@@ -47,9 +47,11 @@ The toolbar inserts `¬`, `∧`, `∨`, `→`, `↔`, `(`, `)` at the cursor, re
 a selection; `variable` inserts the next single-letter variable from `p` to `z`
 that the current input does not use, skipping `y` (the conjunction word, which
 can never be an identifier; `p` when every usable letter is taken or the
-formula does not scan); `Limpiar` clears the input and its cursor, never the
+formula does not scan); `borrar` deletes the selected text when there is a
+selection, otherwise the character before the caret, and does nothing when the
+caret is at the start; `Limpiar` clears the input and its cursor, never the
 stored result. The caret is remembered across frames, including the frame in
-which the field loses focus to a toolbar button, so a button inserts where the
+which the field loses focus to a toolbar button, so a button acts where the
 caret was rather than at the end. Every button has a hover description in
 Spanish.
 

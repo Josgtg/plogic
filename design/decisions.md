@@ -66,6 +66,7 @@ decision as it stands today.
 | 052 | Reserved words get role-specific parser diagnostics | Accepted |
 | 053 | File-mode headings carry the proposition's source line | Accepted |
 | 054 | The interactive session edits lines with rustyline | Accepted |
+| 055 | The GUI toolbar has a delete button | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -715,3 +716,30 @@ session splits into `run_edited`, `run_piped` and the shared `session_line`, so
 the piped behavior is exactly the earlier one and its tests are untouched. The
 terminal path cannot run in the test harness; it is checked on a
 pseudo-terminal, and `design/testing.md` records what that check covers.
+
+## ADR-055 — The GUI toolbar has a delete button
+
+Status: Accepted
+
+The toolbar could insert every symbol and the next variable, but a mistyped
+character had to be removed with the keyboard, which means finding and
+selecting it first. The field does not expose a delete key of its own, and the
+caret is already tracked for insertion (ADR-052's caret retention).
+
+Decision: a `borrar` button sits between `variable` and `Limpiar` and deletes
+before the remembered caret. With a selection it deletes the selected text
+whole; otherwise it deletes the character just before the caret, counted in
+characters so a formal symbol is one deletion. A caret at the start deletes
+nothing, and with no known caret it deletes the last character — the mirror of
+the insert's append. The caret lands where the deletion started and keeps the
+focus. Insertion and deletion share `cursor_bounds` and `set_caret`, so both
+read the caret and restore it the same way.
+
+Alternatives: a `⌫` glyph as the label (the mockup's font fallback does not
+cover it reliably); deleting at the end regardless of the caret (ignores the
+caret the insert buttons respect); deleting only the last character, never a
+selection (inconsistent with the insert buttons, which replace selections).
+
+Consequences: the GUI tests cover the deletion cases directly through the pure
+helpers, since the window cannot run headlessly; the layout is checked by eye.
+`Limpiar` keeps its meaning: it clears the whole field, not one character.

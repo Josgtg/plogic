@@ -373,7 +373,12 @@ layout is checked by eye.
   leaves the cursor after the inserted text. `remember_cursor(None)` keeps the
   last known caret (the unfocused frame when a toolbar button is clicked) and
   `remember_cursor(Some(range))` replaces it, so a later insertion happens
-  where the caret was, not at the end. `value_cell` maps true to
+  where the caret was, not at the end. `delete_before_caret` removes the
+  selected text whole when there is a selection, otherwise the character just
+  before the caret (a formal symbol counts as one) and leaves the caret at the
+  deletion point; a caret at the start changes nothing, and with no known
+  caret it removes the last character, mirroring the insert's append.
+  `value_cell` maps true to
   `V`/green and false to `F`/red; the classification mapping is
   tautology/green, contradiction/red, contingency/muted.
 - Table data: one column per `table.variables`, one row per `table.rows`, a

@@ -18,6 +18,10 @@ class PlogicApp {
   -cursor: CCursorRange?
   +evaluate()
   +insert_at_cursor(ctx: &Context, text: str)
+  +delete_before_caret(ctx: &Context)
+  +cursor_bounds(): (int, int)
+  +set_caret(ctx: &Context, index: int)
+  +remember_cursor(cursor: CCursorRange?)
 }
 
 class View {
@@ -62,6 +66,12 @@ note bottom of PlogicApp
   the next evaluation. Mostrar tabla off calls assess with
   no table; on, assess builds only below ten variables. No
   table means no classification (ADR-049).
+
+  The toolbar inserts a connective at the remembered
+  caret and offers variable, borrar and Limpiar. borrar
+  deletes the selection when there is one, otherwise the
+  character before the caret; insertion and deletion share
+  cursor_bounds and set_caret (ADR-055).
 end note
 
 GUI ..> PlogicApp : <<create>>
