@@ -3,18 +3,23 @@
 A propositional logic evaluator: it reads propositions, simplifies them, and builds a
 truth table for each one.
 
-> **Status: implemented.** The language, the pipeline, the CLI and the GUI are fully
-> designed in [`design/`](design/) and implemented: the CLI argument parser, the token
-> vocabulary, the scanner, the parser, the syntax tree with its two printers, the
-> simplifier, the interpreter with the truth table, the orchestrator, the wired CLI and
-> the egui window. Everything below documents the behavior.
+## Use the application
 
-## Build and run
+You can download the latest release [here](https://github.com/Josgtg/plogic/releases/latest).
 
-Requires a Rust toolchain with edition 2024 support.
+### Build from source
+
+You can also build from the source. Requires a Rust toolchain with edition 2024 support.
+
+Build:
 
 ```sh
 cargo build --release
+```
+
+Run:
+
+```sh
 ./target/release/plogic 'p -> q'
 ```
 
