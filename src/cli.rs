@@ -156,7 +156,7 @@ fn render_formulas(formulas: &[Simplified], numbered: bool, show_process: bool) 
             block.push('\n');
             if show_process && !formula.steps.is_empty() {
                 block.push('\n');
-                block.push_str(&render_process(&formula.steps));
+                block.push_str(&render_process(&formula.original, &formula.steps));
             }
             block
         })
@@ -179,11 +179,13 @@ fn present(evaluation: &Evaluation, color: bool, show_process: bool) -> String {
         && let Some(simplification) = &evaluation.simplification
         && !simplification.steps.is_empty()
     {
-        output.push_str(&render_process(&simplification.steps));
+        output.push_str(&render_process(&simplification.original, &simplification.steps));
         output.push('\n');
     }
+    output.push_str("Tabla de verdad:\n");
     output.push_str(&render_table(table, color));
     output.push_str("\n\n");
+    output.push_str("Clasificación: ");
     output.push_str(classification(table));
     output.push('\n');
     output
@@ -191,8 +193,9 @@ fn present(evaluation: &Evaluation, color: bool, show_process: bool) -> String {
 
 /// The `Proceso:` block: one numbered line per applied law, with the canonical
 /// formula it produced.
-fn render_process(steps: &[Step]) -> String {
+fn render_process(original: &str, steps: &[Step]) -> String {
     let mut output = String::from("Proceso:\n");
+    output.push_str(&format!("0. Original: {}\n", original));
     for (index, step) in steps.iter().enumerate() {
         output.push_str(&format!(
             "{}. {}: {}\n",

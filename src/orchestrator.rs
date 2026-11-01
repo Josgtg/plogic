@@ -27,6 +27,7 @@ pub struct Orchestrator;
 /// `None` with `--no-simplificar`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Evaluation {
+    pub original: String,
     pub table: TruthTable,
     pub simplification: Option<Simplification>,
 }
@@ -72,6 +73,7 @@ impl Orchestrator {
                 .as_ref()
                 .map(|simplification| InfixPrinter::print(&simplification.expression));
             evaluations.push(Evaluation {
+                original: expression.infix_str(),
                 table: table.with_display(label, simplified),
                 simplification,
             });

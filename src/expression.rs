@@ -78,6 +78,13 @@ impl PartialEq for Expression {
     }
 }
 
+impl Expression {
+    /// Returns the infix string representation of the expression.
+    pub fn infix_str(&self) -> String {
+        InfixPrinter::print(self)
+    }
+}
+
 impl Eq for Expression {}
 
 /// Renders an expression in parenthesized prefix (Polish) notation, used to

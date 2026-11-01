@@ -152,13 +152,14 @@ order, each with the formula it produced; it is omitted when no law applied.
 ```
 Simplificada: q ∨ ¬p
 
+Tabla de verdad:
 q  p  | q ∨ ¬p
 F  F  | V
 F  V  | F
 V  F  | V
 V  V  | V
 
-Esta proposición es una contingencia.
+Clasificación: Esta proposición es una contingencia.
 ```
 
 - Rows follow binary counting order, the last variable varying fastest, so the first row

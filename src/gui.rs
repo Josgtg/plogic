@@ -19,7 +19,6 @@ use eframe::egui;
 use egui::text::{CCursor, CCursorRange};
 
 use crate::args::UsageError;
-use crate::expression::InfixPrinter;
 use crate::orchestrator::{Assessment, Orchestrator};
 use crate::scanner::scan;
 use crate::simplifier::Step;
@@ -418,7 +417,7 @@ impl PlogicApp {
         {
             ui.add_space(SECTION_GAP);
             component(ui, "Proceso", |ui| {
-                process_list(ui, &simplification.steps);
+                process_list(ui, &simplification.original, &simplification.steps);
             });
         }
 
@@ -595,20 +594,24 @@ fn component(ui: &mut egui::Ui, title: &str, body: impl FnOnce(&mut egui::Ui)) {
 }
 
 /// One row per applied law, as a numbered list.
-fn process_list(ui: &mut egui::Ui, steps: &[Step]) {
-    for (index, step) in steps.iter().enumerate() {
+fn process_list(ui: &mut egui::Ui, original: &str, steps: &[Step]) {
+    fn add_list_item(ui: &mut egui::Ui, index: usize, rule: &str, expression: &str) {
         ui.horizontal_wrapped(|ui| {
             ui.label(
-                egui::RichText::new(format!("{}. {}:", index + 1, step.rule.label()))
+                egui::RichText::new(format!("{}. {}:", index, rule))
                     .monospace()
                     .size(14.0),
             );
             ui.label(
-                egui::RichText::new(InfixPrinter::print(&step.expression))
+                egui::RichText::new(expression)
                     .monospace()
                     .size(14.0),
             );
         });
+    }
+    add_list_item(ui, 0, "Original", &original);
+    for (index, step) in steps.iter().enumerate() {
+        add_list_item(ui, index + 1, step.rule.label(), &step.expression.infix_str());
     }
 }
 

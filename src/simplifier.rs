@@ -90,6 +90,7 @@ pub struct Step {
 /// produced it. The steps are empty when no law applied.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Simplification {
+    pub original: String,
     pub expression: Expression,
     pub steps: Vec<Step>,
 }
@@ -104,7 +105,12 @@ impl Simplifier {
         // two; `expand` receives the fixed point, which is already canonical.
         let ungrouped = Self::erase_grouping(expression);
         let (reduced, steps) = Self::reduce(&ungrouped);
-        Self::expand(&reduced, steps)
+        let (expanded, steps) = Self::expand(&reduced, steps);
+        Simplification {
+            original: Self::canonicalize(expression).infix_str(),
+            expression: expanded,
+            steps,
+        }
     }
 
     /// Step 0: drops every `Grouping`. The precedence already encodes what the
@@ -198,7 +204,7 @@ impl Simplifier {
     /// far. The weight is a natural number that only drops, so the loop ends.
     /// An accepted candidate contributes its distribution step followed by the
     /// reduction steps it triggered; a discarded candidate contributes nothing.
-    fn expand(expression: &Expression, mut steps: Vec<Step>) -> Simplification {
+    fn expand(expression: &Expression, mut steps: Vec<Step>) -> (Expression, Vec<Step>) {
         let mut best = expression.clone();
         loop {
             let mut improved = false;
@@ -217,10 +223,7 @@ impl Simplifier {
                 }
             }
             if !improved {
-                return Simplification {
-                    expression: best,
-                    steps,
-                };
+                return(best, steps);
             }
         }
     }
