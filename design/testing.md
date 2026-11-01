@@ -302,6 +302,13 @@ Property tests over generated expressions:
   presentation or an error is followed by a blank line before the next prompt;
   Ctrl-D prints one newline after the pending prompt, while `exit`/`salir` add
   none (ADR-045).
+- Interactive over a terminal (ADR-054): Up recalls the previous line and Enter
+  evaluates the recalled text; Left/Right move the caret and arrows edit in
+  place; Down after Up returns to the empty line; Ctrl-C cancels the line and
+  the next line still evaluates; Ctrl-D exits 0. Blank lines are not added to
+  the history. These are checked on a pseudo-terminal, since the piped harness
+  takes the plain-reader path: the piped tests above keep the prompt on stdout
+  and stay byte-identical.
 
 ## 7. Product examples
 

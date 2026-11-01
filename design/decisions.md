@@ -65,6 +65,7 @@ decision as it stands today.
 | 051 | The GUI scrolls the whole window as one column | Accepted |
 | 052 | Reserved words get role-specific parser diagnostics | Accepted |
 | 053 | File-mode headings carry the proposition's source line | Accepted |
+| 054 | The interactive session edits lines with rustyline | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -681,3 +682,36 @@ Consequences: `Evaluation` and the new `Formula` each grow one `String`, and
 every file-mode block names its proposition. Numbering and the blank-line
 counter are unchanged, and headings never appear outside file mode. The
 positional pairing is pinned by orchestrator tests.
+
+## ADR-054 — The interactive session edits lines with rustyline
+
+Status: Accepted
+
+The session read whole lines from stdin, so the terminal's own line discipline
+was the only editor: no caret movement, no history, and a mistyped proposition
+had to be retyped. Everything else a line editor does — the Emacs keys, Ctrl-C,
+Ctrl-D — comes from raw-terminal handling that plogic does not implement.
+
+Decision: on a terminal the session reads its lines with `rustyline` 19,
+built with `default-features = false`: `DefaultEditor` draws the `> ` prompt,
+the arrows move the caret, Up/Down walk the session's history and Ctrl-D ends
+the session. History is `MemHistory`, in memory for the session only; nothing
+is written to disk, and blank lines are not recorded. Ctrl-C cancels the line
+and shows a fresh prompt — the session stays sticky, so only `exit`, `salir`
+and Ctrl-D end it. When stdin is not a terminal (a pipe, a redirect, the test
+harness), the plain reader runs instead: rustyline's own non-tty fallback
+writes no prompt, which would silently change the output every session test
+asserts.
+
+Alternatives: `reedline` (better unicode and paste handling, heavier tree for
+what this needs); a hand-rolled raw mode over termios and escape sequences
+(weeks of terminal edge cases); accepting rustyline's non-tty fallback (loses
+the prompt on stdout and breaks the piped tests); file-based history
+(persistent state the request did not ask for).
+
+Consequences: `rustyline` joins the dependency list, adding eight small leaf
+crates and no `home` or `radix_trie` because the default features are off. The
+session splits into `run_edited`, `run_piped` and the shared `session_line`, so
+the piped behavior is exactly the earlier one and its tests are untouched. The
+terminal path cannot run in the test harness; it is checked on a
+pseudo-terminal, and `design/testing.md` records what that check covers.

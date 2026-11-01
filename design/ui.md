@@ -225,6 +225,14 @@ associativity requires (see truth_table.md).
 - A blank or whitespace-only line evaluates nothing and just shows a new
   prompt; an empty session is not an error. A presentation or an error is
   followed by a blank line before the next prompt (ADR-045).
+- On a terminal the line is read with the rustyline editor (ADR-054): the
+  left/right arrows move the caret, Up and Down walk the lines typed in this
+  session (blank lines are not recorded), and the usual editing keys work.
+  Ctrl-C cancels the current line and shows a fresh prompt; the session is
+  sticky by design, so a cancelled line never ends it.
+- When the input is a pipe or a redirected file, the session reads plain lines
+  instead, so the prompt and the output stay byte-identical to the earlier
+  behavior.
 - `exit`, `salir`, or end-of-input (Ctrl-D) ends the session. End-of-input
   prints one newline after the pending `> `; the two words add none, since
   the user already pressed Enter (ADR-045).
