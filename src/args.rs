@@ -73,6 +73,10 @@ pub struct Args {
     #[arg(short = 's', long = "simplificar", help_heading = OPTIONS_HEADING)]
     pub simplificar: bool,
 
+    /// muestra el proceso de simplificación
+    #[arg(short = 'm', long = "mostrar-proceso", help_heading = OPTIONS_HEADING)]
+    pub mostrar_proceso: bool,
+
     /// escribe la salida en <archivo>
     #[arg(
         short = 'o',
@@ -129,6 +133,8 @@ pub enum Input {
 pub struct Config {
     pub input: Input,
     pub simplification: Simplification,
+    /// `-m` / `--mostrar-proceso`: print the Simplifier's applied rules.
+    pub show_process: bool,
     /// `-o` / `--salida`.
     pub output: Option<PathBuf>,
 }
@@ -161,6 +167,8 @@ pub enum UsageError {
     NoProposition,
     /// `'--simplificar' no se puede usar con '--no-simplificar'`
     SimplifyWithNoSimplify,
+    /// `'--mostrar-proceso' no se puede usar con '--no-simplificar'`
+    ShowProcessWithNoSimplify,
     /// `'-o' no se puede usar con '--interactivo'`
     OutputWithInteractive,
 }
@@ -176,6 +184,9 @@ impl UsageError {
             UsageError::NoProposition => "no se proporcionó ninguna proposición".to_string(),
             UsageError::SimplifyWithNoSimplify => {
                 "'--simplificar' no se puede usar con '--no-simplificar'".to_string()
+            }
+            UsageError::ShowProcessWithNoSimplify => {
+                "'--mostrar-proceso' no se puede usar con '--no-simplificar'".to_string()
             }
             UsageError::OutputWithInteractive => {
                 "'-o' no se puede usar con '--interactivo'".to_string()
@@ -206,7 +217,8 @@ pub(crate) fn bright_red(text: &str) -> String {
 impl Args {
     /// Applies the plogic rules to the parsed command line, in the order
     /// ADR-027 fixes: modes, extra positional, missing proposition,
-    /// `--simplificar` with `--no-simplificar`, and `-o` with `--interactivo`.
+    /// `--simplificar` with `--no-simplificar`, `--mostrar-proceso` with
+    /// `--no-simplificar`, and `-o` with `--interactivo`.
     pub fn into_config(self) -> Result<Config, UsageError> {
         let modes = [
             self.proposicion.is_some(),
@@ -241,6 +253,9 @@ impl Args {
         if self.simplificar && self.no_simplificar {
             return Err(UsageError::SimplifyWithNoSimplify);
         }
+        if self.mostrar_proceso && self.no_simplificar {
+            return Err(UsageError::ShowProcessWithNoSimplify);
+        }
         if self.salida.is_some() && self.interactivo {
             return Err(UsageError::OutputWithInteractive);
         }
@@ -256,6 +271,7 @@ impl Args {
         Ok(Config {
             input,
             simplification,
+            show_process: self.mostrar_proceso,
             output: self.salida.map(PathBuf::from),
         })
     }
@@ -305,6 +321,7 @@ const FLAGS: &[(&str, Option<char>)] = &[
     ("interactivo", Some('i')),
     ("no-simplificar", None),
     ("simplificar", Some('s')),
+    ("mostrar-proceso", Some('m')),
     ("salida", Some('o')),
 ];
 
@@ -463,6 +480,7 @@ mod tests {
             Config {
                 input: proposition("p -> q"),
                 simplification: Simplification::Table,
+                show_process: false,
                 output: None,
             }
         );
@@ -480,6 +498,18 @@ mod tests {
             config(&["--simplificar", "p"]).simplification,
             Simplification::Formula
         );
+    }
+
+    #[test]
+    fn mostrar_proceso_sets_show_process_in_every_mode() {
+        assert!(!config(&["p"]).show_process);
+        assert!(config(&["-m", "p"]).show_process);
+        assert!(config(&["--mostrar-proceso", "p"]).show_process);
+        assert!(config(&["-m", "-s", "p"]).show_process);
+        assert!(config(&["-m", "-p", "p"]).show_process);
+        assert!(config(&["-m", "-a", "f.txt"]).show_process);
+        assert!(config(&["-m", "-i"]).show_process);
+        assert!(config(&["-m", "-o", "out.txt", "p"]).show_process);
     }
 
     #[test]
@@ -541,6 +571,7 @@ mod tests {
             Config {
                 input: proposition("q"),
                 simplification: Simplification::Formula,
+                show_process: false,
                 output: None,
             }
         );
@@ -549,6 +580,7 @@ mod tests {
             Config {
                 input: Input::Interactive,
                 simplification: Simplification::Formula,
+                show_process: false,
                 output: None,
             }
         );
@@ -630,6 +662,14 @@ mod tests {
             UsageError::UnexpectedArgument("--no-simplificar".to_string())
         );
         assert_eq!(
+            error(&["-m", "-m"]),
+            UsageError::UnexpectedArgument("-m".to_string())
+        );
+        assert_eq!(
+            error(&["--mostrar-proceso", "--mostrar-proceso"]),
+            UsageError::UnexpectedArgument("--mostrar-proceso".to_string())
+        );
+        assert_eq!(
             error(&["-o", "a", "-o", "b"]),
             UsageError::UnexpectedArgument("-o".to_string())
         );
@@ -663,6 +703,7 @@ mod tests {
         assert_eq!(error(&[]), UsageError::NoProposition);
         assert_eq!(error(&["--no-simplificar"]), UsageError::NoProposition);
         assert_eq!(error(&["-s"]), UsageError::NoProposition);
+        assert_eq!(error(&["-m"]), UsageError::NoProposition);
         assert_eq!(error(&["-s", "-o", "out.txt"]), UsageError::NoProposition);
         assert_eq!(error(&[""]), UsageError::NoProposition);
         assert_eq!(error(&["   "]), UsageError::NoProposition);
@@ -675,6 +716,14 @@ mod tests {
         assert_eq!(
             error(&["p", "-s", "--no-simplificar"]),
             UsageError::SimplifyWithNoSimplify
+        );
+        assert_eq!(
+            error(&["p", "-m", "--no-simplificar"]),
+            UsageError::ShowProcessWithNoSimplify
+        );
+        assert_eq!(
+            error(&["--mostrar-proceso", "p", "--no-simplificar"]),
+            UsageError::ShowProcessWithNoSimplify
         );
         assert_eq!(
             error(&["-o", "out.txt", "-i"]),
@@ -691,6 +740,20 @@ mod tests {
         assert_eq!(
             error(&["-i", "-o", "out.txt", "-s", "--no-simplificar"]),
             UsageError::SimplifyWithNoSimplify
+        );
+    }
+
+    #[test]
+    fn precedence_puts_the_show_process_conflict_after_simplify_and_before_output() {
+        // `--simplificar` and `--no-simplificar` win over the process conflict.
+        assert_eq!(
+            error(&["-i", "-m", "-o", "out.txt", "-s", "--no-simplificar"]),
+            UsageError::SimplifyWithNoSimplify
+        );
+        // The process conflict wins over `-o` with `--interactivo`.
+        assert_eq!(
+            error(&["-i", "-m", "-o", "out.txt", "--no-simplificar"]),
+            UsageError::ShowProcessWithNoSimplify
         );
     }
 
@@ -760,6 +823,7 @@ opciones:
   -i, --interactivo          inicia una sesión interactiva
       --no-simplificar       no simplifica la proposición
   -s, --simplificar          muestra solo la proposición simplificada
+  -m, --mostrar-proceso      muestra el proceso de simplificación
   -o, --salida <archivo>     escribe la salida en <archivo>
   -h, --help                 muestra esta ayuda
   -V, --version              muestra la versión
@@ -791,6 +855,10 @@ opciones:
         assert_eq!(
             error(&["p", "--simplificar", "--no-simplificar"]).message(),
             "'--simplificar' no se puede usar con '--no-simplificar'"
+        );
+        assert_eq!(
+            error(&["p", "-m", "--no-simplificar"]).message(),
+            "'--mostrar-proceso' no se puede usar con '--no-simplificar'"
         );
         assert_eq!(
             error(&["-o", "out.txt", "-i"]).message(),

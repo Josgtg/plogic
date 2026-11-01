@@ -16,44 +16,58 @@ use crate::expression::{Expression, InfixPrinter};
 use crate::interpreter::Interpreter;
 use crate::parser::Parser;
 use crate::scanner::scan;
-use crate::simplifier::Simplifier;
+use crate::simplifier::{Simplification, Simplifier};
 use crate::truth_table::TruthTable;
 
 /// The pipeline driver. Never constructed.
 pub struct Orchestrator;
 
+/// One proposition's result: its truth table and, when the Simplifier ran, the
+/// simplification that produced the tabulated formula. `simplification` is
+/// `None` with `--no-simplificar`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Evaluation {
+    pub table: TruthTable,
+    pub simplification: Option<Simplification>,
+}
+
 impl Orchestrator {
-    /// Runs the whole pipeline over `source` and returns one truth table per
+    /// Runs the whole pipeline over `source` and returns one evaluation per
     /// proposition, in input order.
     ///
     /// When `simplify` is false the Simplifier is skipped and the original is
     /// tabulated. When it is true the table is built from the simplified
-    /// expression, and the simplified formula is kept as the table's display
-    /// text.
-    pub fn evaluate(source: String, simplify: bool) -> Result<Vec<TruthTable>, Vec<Error>> {
+    /// expression, the simplified formula is kept as the table's display text,
+    /// and the simplification's steps travel alongside the table.
+    pub fn evaluate(source: String, simplify: bool) -> Result<Vec<Evaluation>, Vec<Error>> {
         let expressions = Self::parse(source)?;
 
-        let mut tables = Vec::with_capacity(expressions.len());
+        let mut evaluations = Vec::with_capacity(expressions.len());
         for expression in &expressions {
-            let simplified = simplify.then(|| Simplifier::simplify(expression));
-            let chosen = simplified.as_ref().unwrap_or(expression);
+            let simplification = simplify.then(|| Simplifier::simplify(expression));
+            let chosen = simplification
+                .as_ref()
+                .map(|simplification| &simplification.expression)
+                .unwrap_or(expression);
             let table = Interpreter::interpret(chosen)?;
             let label = InfixPrinter::print(chosen);
-            let simplified = simplified.as_ref().map(InfixPrinter::print);
-            tables.push(table.with_display(label, simplified));
+            let simplified = simplification
+                .as_ref()
+                .map(|simplification| InfixPrinter::print(&simplification.expression));
+            evaluations.push(Evaluation {
+                table: table.with_display(label, simplified),
+                simplification,
+            });
         }
-        Ok(tables)
+        Ok(evaluations)
     }
 
-    /// Simplifies every proposition of `source` and returns their normalized
-    /// infix text, in input order. No table is built, so the size limit does
-    /// not apply (`--simplificar`).
-    pub fn simplify(source: String) -> Result<Vec<String>, Vec<Error>> {
+    /// Simplifies every proposition of `source` and returns each result with
+    /// its steps, in input order. No table is built, so the size limit does not
+    /// apply (`--simplificar`).
+    pub fn simplify(source: String) -> Result<Vec<Simplification>, Vec<Error>> {
         let expressions = Self::parse(source)?;
-        Ok(expressions
-            .iter()
-            .map(|expression| InfixPrinter::print(&Simplifier::simplify(expression)))
-            .collect())
+        Ok(expressions.iter().map(Simplifier::simplify).collect())
     }
 
     /// The shared first half of both entry points: source to expressions.
@@ -70,23 +84,29 @@ impl Orchestrator {
 
 #[cfg(test)]
 mod tests {
-    use super::Orchestrator;
+    use super::{Evaluation, Orchestrator};
     use crate::error::Error;
+    use crate::expression::InfixPrinter;
+    use crate::simplifier::{Rule, Simplification};
     use crate::truth_table::{Classification, TruthTable};
 
-    fn evaluate(source: &str, simplify: bool) -> Result<Vec<TruthTable>, Vec<Error>> {
+    fn evaluate(source: &str, simplify: bool) -> Result<Vec<Evaluation>, Vec<Error>> {
         Orchestrator::evaluate(source.to_string(), simplify)
     }
 
-    fn formulas(source: &str) -> Result<Vec<String>, Vec<Error>> {
+    fn simplifications(source: &str) -> Result<Vec<Simplification>, Vec<Error>> {
         Orchestrator::simplify(source.to_string())
     }
 
-    fn one_table(source: &str, simplify: bool) -> TruthTable {
-        let mut tables = evaluate(source, simplify)
+    fn one_evaluation(source: &str, simplify: bool) -> Evaluation {
+        let mut evaluations = evaluate(source, simplify)
             .unwrap_or_else(|errors| panic!("source {source:?} failed: {errors:?}"));
-        assert_eq!(tables.len(), 1, "source {source:?}");
-        tables.remove(0)
+        assert_eq!(evaluations.len(), 1, "source {source:?}");
+        evaluations.remove(0)
+    }
+
+    fn one_table(source: &str, simplify: bool) -> TruthTable {
+        one_evaluation(source, simplify).table
     }
 
     /// `p1 | !p1 | p2 | ... | p13`: a tautology with thirteen variables, which
@@ -127,6 +147,22 @@ mod tests {
         );
     }
 
+    #[test]
+    fn the_default_evaluation_carries_the_applied_steps() {
+        let evaluation = one_evaluation("p -> q", true);
+        let simplification = evaluation
+            .simplification
+            .expect("the default run should simplify");
+
+        assert_eq!(InfixPrinter::print(&simplification.expression), "q ∨ ¬p");
+        assert_eq!(simplification.steps.len(), 1);
+        assert_eq!(simplification.steps[0].rule, Rule::Conditional);
+        assert_eq!(
+            InfixPrinter::print(&simplification.steps[0].expression),
+            "q ∨ ¬p"
+        );
+    }
+
     // --- Original table ----------------------------------------------------
 
     #[test]
@@ -149,6 +185,11 @@ mod tests {
                 (vec![true, true], true),
             ]
         );
+    }
+
+    #[test]
+    fn simplify_false_carries_no_simplification() {
+        assert!(one_evaluation("p -> q", false).simplification.is_none());
     }
 
     // --- Tautologies -------------------------------------------------------
@@ -255,12 +296,12 @@ mod tests {
         let tables = evaluate("p & q\nq & p\nr\n", false).expect("the batch should evaluate");
 
         assert_eq!(tables.len(), 3);
-        assert_eq!(tables[0].variables, ["p", "q"]);
-        assert_eq!(tables[0].label, "p ∧ q");
-        assert_eq!(tables[1].variables, ["q", "p"]);
-        assert_eq!(tables[1].label, "q ∧ p");
-        assert_eq!(tables[2].variables, ["r"]);
-        assert_eq!(tables[2].label, "r");
+        assert_eq!(tables[0].table.variables, ["p", "q"]);
+        assert_eq!(tables[0].table.label, "p ∧ q");
+        assert_eq!(tables[1].table.variables, ["q", "p"]);
+        assert_eq!(tables[1].table.label, "q ∧ p");
+        assert_eq!(tables[2].table.variables, ["r"]);
+        assert_eq!(tables[2].table.label, "r");
     }
 
     #[test]
@@ -282,35 +323,49 @@ mod tests {
     // --- Orchestrator.simplify --------------------------------------------
 
     #[test]
-    fn simplify_returns_the_normalized_formula() {
-        assert_eq!(formulas("p -> q"), Ok(vec!["q ∨ ¬p".to_string()]));
+    fn simplify_returns_the_normalized_formula_with_its_steps() {
+        let results = simplifications("p -> q").expect("the source should simplify");
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(InfixPrinter::print(&results[0].expression), "q ∨ ¬p");
+        assert_eq!(results[0].steps.len(), 1);
+        assert_eq!(results[0].steps[0].rule, Rule::Conditional);
+        assert_eq!(
+            InfixPrinter::print(&results[0].steps[0].expression),
+            "q ∨ ¬p"
+        );
     }
 
     #[test]
     fn simplify_collapses_a_thirteen_variable_tautology_without_a_size_error() {
-        assert_eq!(
-            formulas(&tautology_with_thirteen_variables()),
-            Ok(vec!["V".to_string()])
-        );
+        let results = simplifications(&tautology_with_thirteen_variables())
+            .expect("the size limit must not apply");
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(InfixPrinter::print(&results[0].expression), "V");
     }
 
     #[test]
-    fn simplify_returns_one_formula_per_proposition_in_input_order() {
-        assert_eq!(
-            formulas("p & q\nr\n"),
-            Ok(vec!["p ∧ q".to_string(), "r".to_string()])
-        );
+    fn simplify_returns_one_result_per_proposition_in_input_order() {
+        let results = simplifications("q & p\np -> q\n").expect("the batch should simplify");
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(InfixPrinter::print(&results[0].expression), "p ∧ q");
+        assert_eq!(InfixPrinter::print(&results[1].expression), "q ∨ ¬p");
+        assert!(results[0].steps.is_empty());
+        assert_eq!(results[1].steps.len(), 1);
+        assert_eq!(results[1].steps[0].rule, Rule::Conditional);
     }
 
     #[test]
     fn simplify_of_an_empty_source_returns_no_formulas() {
-        assert_eq!(formulas(""), Ok(vec![]));
-        assert_eq!(formulas("  \n\n"), Ok(vec![]));
+        assert_eq!(simplifications(""), Ok(vec![]));
+        assert_eq!(simplifications("  \n\n"), Ok(vec![]));
     }
 
     #[test]
     fn simplify_gates_scan_errors_before_parsing() {
-        let errors = formulas("p % q").expect_err("the source must not scan");
+        let errors = simplifications("p % q").expect_err("the source must not scan");
 
         assert!(!errors.is_empty());
         assert!(
@@ -323,7 +378,7 @@ mod tests {
 
     #[test]
     fn simplify_gates_parse_errors_before_simplifying() {
-        let errors = formulas("p &").expect_err("the source must not parse");
+        let errors = simplifications("p &").expect_err("the source must not parse");
 
         assert!(!errors.is_empty());
         assert!(

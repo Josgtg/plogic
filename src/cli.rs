@@ -4,8 +4,8 @@
 //! program reads from or writes to the outside world starts here; the parsing
 //! of the arguments lives in [`crate::args`] and the pipeline in
 //! [`crate::orchestrator`]. The presentation (the aligned table, the
-//! `Simplificada:` line and the classification) is plain formatting, kept in
-//! this module because it is the UI's job.
+//! `Simplificada:` line, the optional `Proceso:` list and the classification)
+//! is plain formatting, kept in this module because it is the UI's job.
 
 use std::io::{self, BufRead, IsTerminal, Write};
 use std::path::Path;
@@ -14,7 +14,9 @@ use colored::Colorize;
 
 use crate::args::{self, Config, Input, Simplification};
 use crate::error::Error;
-use crate::orchestrator::Orchestrator;
+use crate::expression::InfixPrinter;
+use crate::orchestrator::{Evaluation, Orchestrator};
+use crate::simplifier::{Simplification as Simplified, Step};
 use crate::truth_table::{Classification, TruthTable};
 
 /// The file an oversized non-interactive run is written to (`design/ui.md`).
@@ -72,18 +74,18 @@ fn run_source(source: String, config: &Config, numbered: bool) -> i32 {
                 Ok(formulas) => formulas,
                 Err(errors) => return report_errors(&errors),
             };
-            let output = render_formulas(&formulas, numbered);
+            let output = render_formulas(&formulas, numbered, config.show_process);
             write_output(&output, config.output.as_deref(), false)
         }
         Simplification::Table | Simplification::Disabled => {
             let simplify = matches!(config.simplification, Simplification::Table);
-            let tables = match Orchestrator::evaluate(source, simplify) {
-                Ok(tables) => tables,
+            let evaluations = match Orchestrator::evaluate(source, simplify) {
+                Ok(evaluations) => evaluations,
                 Err(errors) => return report_errors(&errors),
             };
-            let redirect = config.output.is_none() && oversized(&tables);
+            let redirect = config.output.is_none() && oversized(&evaluations);
             let color = config.output.is_none() && !redirect && table_colors();
-            let output = render(&tables, numbered, color);
+            let output = render(&evaluations, numbered, color, config.show_process);
             write_output(&output, config.output.as_deref(), redirect)
         }
     }
@@ -114,19 +116,19 @@ fn write_output(output: &str, path: Option<&Path>, redirect: bool) -> i32 {
 }
 
 /// Whether any table of the run is too long to read on the console.
-fn oversized(tables: &[TruthTable]) -> bool {
-    tables
+fn oversized(evaluations: &[Evaluation]) -> bool {
+    evaluations
         .iter()
-        .any(|table| table.rows.len() > REDIRECT_THRESHOLD)
+        .any(|evaluation| evaluation.table.rows.len() > REDIRECT_THRESHOLD)
 }
 
 /// The whole run's text, one block per table, separated by a blank line.
-fn render(tables: &[TruthTable], numbered: bool, color: bool) -> String {
-    let blocks: Vec<String> = tables
+fn render(evaluations: &[Evaluation], numbered: bool, color: bool, show_process: bool) -> String {
+    let blocks: Vec<String> = evaluations
         .iter()
         .enumerate()
-        .map(|(index, table)| {
-            let presented = present(table, color);
+        .map(|(index, evaluation)| {
+            let presented = present(evaluation, color, show_process);
             if numbered {
                 format!("Proposición {}:\n\n{presented}", index + 1)
             } else {
@@ -138,36 +140,67 @@ fn render(tables: &[TruthTable], numbered: bool, color: bool) -> String {
 }
 
 /// The formula-only presentation of `--simplificar`: one `Simplificada:` line
-/// per proposition, separated by a blank line, with the file-mode heading.
-fn render_formulas(formulas: &[String], numbered: bool) -> String {
+/// per proposition, separated by a blank line, with the file-mode heading and
+/// the optional `Proceso:` list.
+fn render_formulas(formulas: &[Simplified], numbered: bool, show_process: bool) -> String {
     let blocks: Vec<String> = formulas
         .iter()
         .enumerate()
         .map(|(index, formula)| {
+            let mut block = String::new();
             if numbered {
-                format!("Proposición {}:\n\nSimplificada: {formula}\n", index + 1)
-            } else {
-                format!("Simplificada: {formula}\n")
+                block.push_str(&format!("Proposición {}:\n\n", index + 1));
             }
+            block.push_str("Simplificada: ");
+            block.push_str(&InfixPrinter::print(&formula.expression));
+            block.push('\n');
+            if show_process && !formula.steps.is_empty() {
+                block.push('\n');
+                block.push_str(&render_process(&formula.steps));
+            }
+            block
         })
         .collect();
     blocks.join("\n")
 }
 
 /// One table's presentation: the simplified formula when the Simplifier ran,
-/// the aligned truth table, and the classification, with a blank line between
-/// items (ADR-029).
-fn present(table: &TruthTable, color: bool) -> String {
+/// its process when `-m` asked for it, the aligned truth table, and the
+/// classification, with a blank line between items (ADR-029, ADR-047).
+fn present(evaluation: &Evaluation, color: bool, show_process: bool) -> String {
+    let table = &evaluation.table;
     let mut output = String::new();
     if let Some(simplified) = &table.simplified {
         output.push_str("Simplificada: ");
         output.push_str(simplified);
         output.push_str("\n\n");
     }
+    if show_process
+        && let Some(simplification) = &evaluation.simplification
+        && !simplification.steps.is_empty()
+    {
+        output.push_str(&render_process(&simplification.steps));
+        output.push('\n');
+    }
     output.push_str(&render_table(table, color));
     output.push_str("\n\n");
     output.push_str(classification(table));
     output.push('\n');
+    output
+}
+
+/// The `Proceso:` block: one numbered line per applied law, with the canonical
+/// formula it produced.
+fn render_process(steps: &[Step]) -> String {
+    let mut output = String::from("Proceso:\n");
+    for (index, step) in steps.iter().enumerate() {
+        output.push_str(&format!(
+            "{}. {}: {}\n",
+            index + 1,
+            step.rule.label(),
+            InfixPrinter::print(&step.expression)
+        ));
+    }
     output
 }
 
@@ -280,9 +313,7 @@ fn run_interactive(config: &Config) -> i32 {
         match config.simplification {
             Simplification::Formula => match Orchestrator::simplify(line) {
                 Ok(formulas) => {
-                    for formula in &formulas {
-                        println!("Simplificada: {formula}");
-                    }
+                    print!("{}", render_formulas(&formulas, false, config.show_process));
                 }
                 Err(errors) => {
                     report_errors(&errors);
@@ -291,10 +322,10 @@ fn run_interactive(config: &Config) -> i32 {
             Simplification::Table | Simplification::Disabled => {
                 let simplify = matches!(config.simplification, Simplification::Table);
                 match Orchestrator::evaluate(line, simplify) {
-                    Ok(tables) => {
+                    Ok(evaluations) => {
                         let color = table_colors();
-                        for table in &tables {
-                            print!("{}", present(table, color));
+                        for evaluation in &evaluations {
+                            print!("{}", present(evaluation, color, config.show_process));
                         }
                     }
                     Err(errors) => {

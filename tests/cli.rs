@@ -199,6 +199,222 @@ fn multi_character_variables_are_aligned_without_trailing_spaces() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+// --- Simplification process (-m) ------------------------------------------
+
+#[test]
+fn mostrar_proceso_appends_the_numbered_steps_after_the_simplified_line() {
+    let dir = temp_dir("mostrar-proceso");
+    let output = plogic(&dir, &["-m", "p -> q"]);
+
+    assert_eq!(code(&output), Some(0));
+    assert_eq!(
+        text(&output.stdout),
+        "Simplificada: q ∨ ¬p\n\n\
+         Proceso:\n\
+         1. 13a. Condicional: q ∨ ¬p\n\n\
+         q  p  | q ∨ ¬p\n\
+         F  F  | V\n\
+         F  V  | F\n\
+         V  F  | V\n\
+         V  V  | V\n\n\
+         Esta proposición es una contingencia.\n"
+    );
+    assert!(output.stderr.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mostrar_proceso_lists_the_de_morgan_chain_in_order() {
+    let dir = temp_dir("mostrar-proceso-chain");
+    let output = plogic(&dir, &["-s", "-m", "!(!p | !q)"]);
+
+    assert_eq!(code(&output), Some(0));
+    assert_eq!(
+        text(&output.stdout),
+        "Simplificada: p ∧ q\n\n\
+         Proceso:\n\
+         1. 10a. De Morgan: ¬¬p ∧ ¬¬q\n\
+         2. 7a. Doble negación: p ∧ ¬¬q\n\
+         3. 7a. Doble negación: p ∧ q\n"
+    );
+    assert!(output.stderr.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mostrar_proceso_with_simplificar_prints_the_formula_and_the_process_only() {
+    let dir = temp_dir("mostrar-proceso-formula");
+    let output = plogic(&dir, &["-s", "-m", "p -> q"]);
+
+    assert_eq!(code(&output), Some(0));
+    let stdout = text(&output.stdout);
+    assert_eq!(
+        stdout,
+        "Simplificada: q ∨ ¬p\n\nProceso:\n1. 13a. Condicional: q ∨ ¬p\n"
+    );
+    assert!(!stdout.contains('|'));
+    assert!(!stdout.contains("Esta proposición"));
+    assert!(output.stderr.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mostrar_proceso_omits_the_block_when_no_law_applied() {
+    let dir = temp_dir("mostrar-proceso-empty");
+    let output = plogic(&dir, &["-m", "p"]);
+
+    assert_eq!(code(&output), Some(0));
+    let stdout = text(&output.stdout);
+    assert!(!stdout.contains("Proceso:"));
+    assert_eq!(
+        stdout,
+        "Simplificada: p\n\n\
+         p  | p\n\
+         F  | F\n\
+         V  | V\n\n\
+         Esta proposición es una contingencia.\n"
+    );
+    assert!(output.stderr.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mostrar_proceso_with_no_simplificar_is_a_usage_error() {
+    let dir = temp_dir("mostrar-proceso-conflict");
+    let output = plogic(&dir, &["-m", "--no-simplificar", "p"]);
+
+    assert_eq!(code(&output), Some(2));
+    assert!(output.stdout.is_empty());
+    let stderr = text(&output.stderr);
+    assert!(
+        stderr.starts_with("'--mostrar-proceso' no se puede usar con '--no-simplificar'\n\n"),
+        "unexpected stderr: {stderr:?}"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn repeated_mostrar_proceso_is_a_usage_error() {
+    let dir = temp_dir("mostrar-proceso-repeated");
+    let output = plogic(&dir, &["-m", "-m", "p"]);
+
+    assert_eq!(code(&output), Some(2));
+    assert!(output.stdout.is_empty());
+    let stderr = text(&output.stderr);
+    assert!(
+        stderr.starts_with("argumento inesperado: '-m'\n\n"),
+        "unexpected stderr: {stderr:?}"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mostrar_proceso_in_file_mode_numbers_each_proposition_and_omits_empty_blocks() {
+    let dir = temp_dir("mostrar-proceso-file");
+    std::fs::write(dir.join("f.txt"), "p -> q\nq & p\n")
+        .expect("the input file should be writable");
+
+    let output = plogic(&dir, &["-m", "-a", "f.txt"]);
+
+    assert_eq!(code(&output), Some(0));
+    let stdout = text(&output.stdout);
+    assert_eq!(
+        stdout,
+        "Proposición 1:\n\n\
+         Simplificada: q ∨ ¬p\n\n\
+         Proceso:\n\
+         1. 13a. Condicional: q ∨ ¬p\n\n\
+         q  p  | q ∨ ¬p\n\
+         F  F  | V\n\
+         F  V  | F\n\
+         V  F  | V\n\
+         V  V  | V\n\n\
+         Esta proposición es una contingencia.\n\n\
+         Proposición 2:\n\n\
+         Simplificada: p ∧ q\n\n\
+         p  q  | p ∧ q\n\
+         F  F  | F\n\
+         F  V  | F\n\
+         V  F  | F\n\
+         V  V  | V\n\n\
+         Esta proposición es una contingencia.\n"
+    );
+    assert_eq!(stdout.matches("Proceso:").count(), 1);
+    assert!(output.stderr.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn interactive_mostrar_proceso_adds_the_block_to_each_line_that_applied_a_law() {
+    let dir = temp_dir("interactive-process");
+    let output = plogic_with_stdin(&dir, &["-i", "-m"], "p -> q\nq & p\nexit\n");
+
+    assert_eq!(code(&output), Some(0));
+    let stdout = text(&output.stdout);
+    assert!(stdout.contains("> Simplificada: q ∨ ¬p\n\nProceso:\n1. 13a. Condicional: q ∨ ¬p\n\n"));
+    assert!(stdout.contains("> Simplificada: p ∧ q\n\np  q  | p ∧ q\n"));
+    assert_eq!(stdout.matches("Proceso:").count(), 1);
+    assert!(stdout.ends_with("> "));
+    assert!(output.stderr.is_empty());
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn mostrar_proceso_with_salida_writes_the_process_to_the_file() {
+    let dir = temp_dir("process-salida");
+    let console = plogic(&dir, &["-m", "p -> q"]);
+    assert_eq!(code(&console), Some(0));
+
+    let output = plogic(&dir, &["-m", "-o", "out.txt", "p -> q"]);
+
+    assert_eq!(code(&output), Some(0));
+    assert!(output.stdout.is_empty());
+    assert!(output.stderr.is_empty());
+    let written = std::fs::read(dir.join("out.txt")).expect("out.txt should exist");
+    assert_eq!(text(&written), text(&console.stdout));
+    assert!(text(&written).contains("Proceso:\n1. 13a. Condicional: q ∨ ¬p\n"));
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// --- Help -----------------------------------------------------------------
+
+#[test]
+fn help_prints_the_screen_with_the_process_flag_and_exits_zero() {
+    let dir = temp_dir("help-process");
+    let output = plogic(&dir, &["-h"]);
+
+    assert_eq!(code(&output), Some(0));
+    assert!(output.stderr.is_empty());
+    assert_eq!(
+        text(&output.stdout),
+        "plogic: evalúa proposiciones de lógica proposicional\n\n\
+         uso: plogic [opciones] [proposición]\n\n\
+         argumentos:\n\
+         \x20 [proposición]  evalúa una proposición (entre comillas)\n\n\
+         opciones:\n\
+         \x20 -p, --proposicion <texto>  evalúa una proposición (entre comillas)\n\
+         \x20 -a, --archivo <archivo>    evalúa una proposición por línea\n\
+         \x20 -i, --interactivo          inicia una sesión interactiva\n\
+         \x20     --no-simplificar       no simplifica la proposición\n\
+         \x20 -s, --simplificar          muestra solo la proposición simplificada\n\
+         \x20 -m, --mostrar-proceso      muestra el proceso de simplificación\n\
+         \x20 -o, --salida <archivo>     escribe la salida en <archivo>\n\
+         \x20 -h, --help                 muestra esta ayuda\n\
+         \x20 -V, --version              muestra la versión\n"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 // --- File mode ------------------------------------------------------------
 
 #[test]
