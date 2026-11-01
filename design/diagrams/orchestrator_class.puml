@@ -12,14 +12,22 @@ class GUI {
 
 class Orchestrator {
   +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
-  +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
+  +{static} simplify(source: str): Result<List<Formula>, List<Error>>
   +{static} assess(source: str, simplify: bool, max_variables: int?): Result<List<Assessment>, List<Error>>
   +{static} report(error: Error): str
+  -{static} propositions(source: str): List<str>
 }
 
 class Evaluation {
+  +proposition: str
+  +original: str
   +table: TruthTable
   +simplification: Simplification?
+}
+
+class Formula {
+  +proposition: str
+  +simplification: Simplification
 }
 
 class Assessment {
@@ -58,7 +66,13 @@ note bottom of Orchestrator
   default, or the original with --no-simplificar, and
   returns one Evaluation per proposition (table plus the
   Simplification when it ran). simplify() stops after
-  simplification and builds no tables.
+  simplification and builds no tables, returning one
+  Formula per proposition.
+
+  Both carry the proposition's source line, split out
+  of the source before the scanner consumes it: the
+  non-blank lines, trimmed, pair one to one with the
+  parsed expressions (ADR-053).
 
   assess() is the GUI's entry point: it always returns
   the formula, its variable count and the steps, but
@@ -80,6 +94,7 @@ Orchestrator ..> Simplifier : <<use>>
 Orchestrator ..> Interpreter : <<use>>
 Orchestrator ..> TruthTable : with_display
 Orchestrator ..> Evaluation : <<create>>
+Orchestrator ..> Formula : <<create>>
 Orchestrator ..> Assessment : <<create>>
 Orchestrator ..> InfixPrinter : <<use>>
 Orchestrator ..> Expression : <<use>>

@@ -280,7 +280,8 @@ Property tests over generated expressions:
   (header included), columns are separated by two spaces, `| ` introduces the
   result column and the last column is unpadded, so no line has trailing
   spaces; a table with no variables has no `|` separator (ADR-045).
-- File mode numbering: each block starts with `Proposición n:` and a blank
+- File mode numbering: each block starts with `Proposición n: <proposición>`,
+  the proposition as the source line holds it, trimmed (ADR-053), then a blank
   line, blocks are separated by one blank line, the counter counts only built
   tables, and single-proposition mode has no heading (ADR-045).
 - `-s` / `--simplificar` prints only `Simplificada: <formula>`, with no table

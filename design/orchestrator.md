@@ -10,16 +10,19 @@ its entry points are pure static methods.
 - `Orchestrator.evaluate(source: str, simplify: bool):
   Result<List<Evaluation>, List<Error>>` — runs the whole pipeline over the
   source text of one or more propositions and returns one `Evaluation` per
-  proposition, in input order. `Evaluation { table: TruthTable, simplification:
-  Simplification? }` carries the table and, when the Simplifier ran, the
+  proposition, in input order. `Evaluation { proposition: str, original: str,
+  table: TruthTable, simplification: Simplification? }` carries the
+  proposition as its source line holds it (trimmed, ADR-053), the original
+  formula in normalized form, the table and, when the Simplifier ran, the
   simplification that produced its formula (final expression and steps). When
   `simplify` is false the Simplifier is skipped, `simplification` is empty and
   the original is tabulated. When true the table is built from the simplified
   expression, whose label and canonical text are also the table's display
   text.
-- `Orchestrator.simplify(source: str): Result<List<Simplification>,
-  List<Error>>` — runs scan, parse and simplify only, returning each
-  proposition's final expression with its steps in input order. It builds no
+- `Orchestrator.simplify(source: str): Result<List<Formula>, List<Error>>` —
+  runs scan, parse and simplify only, returning each proposition's source line
+  with its final expression and steps in input order:
+  `Formula { proposition: str, simplification: Simplification }`. It builds no
   tables, so the size limit does not apply (`--simplificar`).
 - `Orchestrator.assess(source: str, simplify: bool, max_variables: int?):
   Result<List<Assessment>, List<Error>>` — the GUI's entry point. It always
@@ -39,7 +42,11 @@ out of a list (ADR-044).
 
 Failure is signalled by `Err`: the failing stage's error list. `Ok` always
 carries one result per proposition: one `Evaluation` per proposition for
-`evaluate`, one `Simplification` for `simplify`, one `Assessment` for `assess`.
+`evaluate`, one `Formula` for `simplify`, one `Assessment` for `assess`. Each
+result carries the proposition's source line (trimmed), which the orchestrator
+splits out of the source before the scanner consumes it: a line with any
+non-blank character always yields exactly one proposition and a blank line
+yields none, so the pairing is positional (ADR-053).
 
 ## Flow
 

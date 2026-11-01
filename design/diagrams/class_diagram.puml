@@ -22,14 +22,21 @@ class GUI {
 
 class Orchestrator {
   +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
-  +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
+  +{static} simplify(source: str): Result<List<Formula>, List<Error>>
   +{static} assess(source: str, simplify: bool, max_variables: int?): Result<List<Assessment>, List<Error>>
   +{static} report(error: Error): str
 }
 
 class Evaluation {
+  +proposition: str
+  +original: str
   +table: TruthTable
   +simplification: Simplification?
+}
+
+class Formula {
+  +proposition: str
+  +simplification: Simplification
 }
 
 class Assessment {

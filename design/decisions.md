@@ -64,6 +64,7 @@ decision as it stands today.
 | 050 | The parser explains that `v` is not an operator in operator position | Accepted |
 | 051 | The GUI scrolls the whole window as one column | Accepted |
 | 052 | Reserved words get role-specific parser diagnostics | Accepted |
+| 053 | File-mode headings carry the proposition's source line | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -652,3 +653,31 @@ expresión a su derecha`, `no` between propositions as the prefix negation, and
 `V` / `F` in operator position as values. The message names every spelling of
 the kind; symbol spellings keep the generic messages. The reserved words
 themselves are unchanged (ADR-010).
+
+## ADR-053 — File-mode headings carry the proposition's source line
+
+Status: Accepted
+
+File mode numbered its blocks with a bare `Proposición n:`, so a reader of a
+long batch could not see which proposition each table belongs to without
+counting lines back to the file.
+
+Decision: the heading is `Proposición n: <proposición>`, with the proposition
+exactly as the file line holds it, trimmed. The Orchestrator splits the
+non-blank lines out of the source before the scanner consumes it (ADR-038
+drops the text with its state) and carries the line in its results:
+`Evaluation.proposition` for the table run and a new orchestrator-owned
+`Formula { proposition, simplification }` for `--simplificar` — the Simplifier
+never sees the source, so `Simplification` stays untouched. The pairing is
+positional and lives next to the parser: a line with any non-blank character
+always yields exactly one proposition and a blank line yields none (ADR-004).
+
+Alternatives: show the normalized original formula (reuses printers, but is
+not what the user wrote and needs the same plumbing with `--no-simplificar`);
+pair lines and results in the CLI (duplicates the blank-line rule away from
+the parser); keep the raw text in the parser (violates ADR-038's ownership).
+
+Consequences: `Evaluation` and the new `Formula` each grow one `String`, and
+every file-mode block names its proposition. Numbering and the blank-line
+counter are unchanged, and headings never appear outside file mode. The
+positional pairing is pinned by orchestrator tests.

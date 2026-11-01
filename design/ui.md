@@ -135,10 +135,11 @@ and exits with code 1.
 
 A file run presents its tables (or its simplified formulas with
 `--simplificar`) in input order, numbered: each block starts with
-`Proposición n:` (1-based), then a blank line, then the normal presentation,
-and one blank line separates consecutive blocks. Numbering counts only the
-propositions actually built, so blank lines in the file do not advance the
-counter; single-proposition mode has no heading (ADR-045).
+`Proposición n: <proposición>` — the number and the proposition exactly as the
+file line holds it, trimmed (ADR-053) — then a blank line, then the normal
+presentation, and one blank line separates consecutive blocks. Numbering
+counts only the propositions actually built, so blank lines in the file do not
+advance the counter; single-proposition mode has no heading (ADR-045).
 
 ## Output destination
 
