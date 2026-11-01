@@ -223,7 +223,7 @@ impl PlogicApp {
             .background_color(INPUT_BACKGROUND)
             .text_color(TEXT)
             .show(ui);
-        self.cursor = output.cursor_range;
+        self.remember_cursor(output.cursor_range);
         let enter =
             output.response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
 
@@ -287,6 +287,13 @@ impl PlogicApp {
                 self.cursor = None;
             }
         });
+    }
+
+    /// Keeps the caret of the formula field across frames, including the frame
+    /// in which the field loses focus to a toolbar button. A frame without a
+    /// caret range (unfocused field) must not erase the last known one.
+    fn remember_cursor(&mut self, cursor: Option<CCursorRange>) {
+        self.cursor = cursor.or(self.cursor);
     }
 
     /// Inserts `text` at the last known cursor range, replacing a selection.
@@ -1336,6 +1343,58 @@ mod tests {
 
         assert_eq!(app.input, "p ∧");
         assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(3))));
+    }
+
+    // --- remember_cursor ---------------------------------------------------
+
+    #[test]
+    fn remember_cursor_keeps_the_last_known_caret_when_the_field_loses_focus() {
+        let mut app = PlogicApp {
+            input: "pq".to_string(),
+            cursor: Some(CCursorRange::one(CCursor::new(1))),
+            ..Default::default()
+        };
+
+        app.remember_cursor(None);
+
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(1))));
+    }
+
+    #[test]
+    fn remember_cursor_replaces_the_caret_when_the_field_reports_one() {
+        let mut app = PlogicApp {
+            cursor: Some(CCursorRange::one(CCursor::new(1))),
+            ..Default::default()
+        };
+
+        app.remember_cursor(Some(CCursorRange::one(CCursor::new(2))));
+
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(2))));
+    }
+
+    #[test]
+    fn remember_cursor_without_a_caret_keeps_an_unknown_caret_unknown() {
+        let mut app = PlogicApp::default();
+
+        app.remember_cursor(None);
+
+        assert!(app.cursor.is_none());
+    }
+
+    #[test]
+    fn a_toolbar_insert_after_focus_loss_uses_the_remembered_caret() {
+        let ctx = egui::Context::default();
+        let mut app = PlogicApp {
+            input: "pq".to_string(),
+            cursor: Some(CCursorRange::one(CCursor::new(1))),
+            ..Default::default()
+        };
+
+        app.remember_cursor(None);
+        app.insert_at_cursor(&ctx, "∧");
+
+        assert_eq!(app.input, "p∧q");
+        assert_eq!(app.cursor, Some(CCursorRange::one(CCursor::new(2))));
     }
 
     // --- value_cell --------------------------------------------------------
