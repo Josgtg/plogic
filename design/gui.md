@@ -43,8 +43,9 @@ From top to bottom:
    of their own. With no result the section shows the muted line
    `El resultado aparecerá aquí.`.
 
-The toolbar inserts `¬`, `∧`, `∨`, `→`, `↔`, `(`, `)` at the cursor, replacing
-a selection; `variable` inserts the next single-letter variable from `p` to `z`
+The toolbar inserts `¬`, `∧`, `∨`, `→`, `↔`, `(`, `)` and the literals `V` / `F`
+at the cursor, replacing a selection; `variable` inserts the next single-letter
+variable from `p` to `z`
 that the current input does not use, skipping `y` (the conjunction word, which
 can never be an identifier; `p` when every usable letter is taken or the
 formula does not scan); `borrar` deletes the selected text when there is a

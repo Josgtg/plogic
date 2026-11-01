@@ -594,7 +594,7 @@ controls (`Simplificar`, `Mostrar tabla`, `Mostrar proceso`), the formula
 field, the insertion toolbar, `Evaluar`, and then the result components in the
 same flow — no fixed output box. Only `Evaluar` (or Enter) replaces the stored
 result; editing and the display controls do not. The toolbar inserts
-`¬ ∧ ∨ → ↔ ( )` at the cursor and a variable button inserts the next unused
+`¬ ∧ ∨ → ↔ ( ) V F` at the cursor and a variable button inserts the next unused
 letter from `p` to `z`, skipping `y` (reserved; `o` is before `p` and is not a
 candidate, and `p` is returned when every usable letter is taken). Dark,
 monospace, fixed to the mockup's theme; if it cannot open, plogic prints
