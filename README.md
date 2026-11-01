@@ -87,14 +87,16 @@ is a usage error.
 ## Graphical window
 
 `plogic` with no arguments opens a dark, monospace window that evaluates one proposition
-at a time. Its help lists the accepted connective and literal spellings. The
-`Simplificar`, `Mostrar tabla` and `Mostrar proceso` controls select the next evaluation
-and which result parts are shown; the toolbar inserts connectives, parentheses and
-variables; and `Evaluar` produces separate cards for the simplified (or original)
-formula, the optional process list, a real truth table and the classification. The whole
-window scrolls. Editing the formula does not replace the previous result: only `Evaluar`
-does. Files, interactive mode and `-o` remain CLI-only. If the window cannot open,
-plogic prints `no se pudo iniciar la interfaz gráfica` on stderr and exits 1.
+at a time. The header and input section stay fixed; only the result section scrolls, and
+its centered components are the simplified (or original) formula, the optional process
+list, a real truth table and the classification. The collapsed help lists the accepted
+connective and literal spellings in one column set. `Simplificar`, `Mostrar tabla` and
+`Mostrar proceso` are all read when `Evaluar` is pressed: with `Mostrar tabla` off the
+table is not processed, and with it on the table is built only for fewer than ten
+variables, so the classification appears only with a table. Editing the formula does not
+replace the previous result: only `Evaluar` does. Files, interactive mode and `-o`
+remain CLI-only. If the window cannot open, plogic prints `no se pudo iniciar la
+interfaz gráfica` on stderr and exits 1.
 
 ## The language
 

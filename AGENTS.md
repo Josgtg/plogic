@@ -100,8 +100,8 @@ The runtime stack is deliberately small:
   plain.
 - **eframe 0.37** (egui) opens the graphical window when plogic runs with no
   arguments. It is pure Rust with no webview; the `gui` module calls the
-  Orchestrator and builds the formula, process, truth-table and classification
-  cards (ADR-048).
+  Orchestrator and builds the centered formula, process, truth-table and
+  classification components (ADR-048, ADR-049).
 
 Any other dependency needs a decision first.
 
@@ -129,9 +129,9 @@ bash .opencode/update_ai_artifacts.sh        # after code, docs or config change
 | `src/simplifier.rs` | the simplifier: canonical rewrites, with the applied steps |
 | `src/interpreter.rs` | the interpreter: evaluation and truth-table construction |
 | `src/truth_table.rs` | the `TruthTable`, `Row` and `Classification` result types |
-| `src/orchestrator.rs` | the pipeline driver: `evaluate`, `simplify` and `report` |
+| `src/orchestrator.rs` | the pipeline driver: `evaluate`, `simplify`, `assess` and `report` |
 | `src/cli.rs` | the UI/CLI: I/O, presentation, error colors |
-| `src/gui.rs` | the GUI: window, controls, result cards and the eframe entry point |
+| `src/gui.rs` | the GUI: window, controls, result components and the eframe entry point |
 | `src/args.rs` | argument parsing: `Args`, `parse`, `Config` and `UsageError` |
 | `design/` | design documents; `design/diagrams/` holds the PlantUML sources |
 | `.opencode/` | generated AI artifacts; never edit by hand, refresh instead |
