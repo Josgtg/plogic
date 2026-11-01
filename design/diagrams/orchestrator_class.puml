@@ -8,9 +8,14 @@ interface UI {
 }
 
 class Orchestrator {
-  +{static} evaluate(source: str, simplify: bool): Result<List<TruthTable>, List<Error>>
-  +{static} simplify(source: str): Result<List<str>, List<Error>>
+  +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
+  +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
   +{static} report(error: Error): str
+}
+
+class Evaluation {
+  +table: TruthTable
+  +simplification: Simplification?
 }
 
 class Token
@@ -20,6 +25,8 @@ class Parser
 class ScanState
 class ParseState
 class Simplifier
+class Simplification
+class Step
 class Interpreter
 class TruthTable
 class InfixPrinter
@@ -39,15 +46,18 @@ note bottom of Orchestrator
 
   Step 8 tabulates the simplified expression by
   default, or the original with --no-simplificar.
-  simplify() stops after simplification, returns the
-  formula texts and builds no tables, so no size
-  limit applies (--simplificar).
-  evaluate() adds each table's display text through
-  TruthTable.with_display: the tabulated expression in
-  the label and, when simplification ran, the simplified
-  formula in canonical order (InfixPrinter). report() is
-  a pure formatter for the CLI. All three take their
-  owned argument by value (ADR-044, ADR-046).
+  simplify() stops after simplification, returns each
+  Simplification (expression and steps) and builds no
+  tables, so no size limit applies (--simplificar).
+  evaluate() returns one Evaluation per proposition:
+  the table plus the Simplification when it ran, so
+  the CLI can print the process with -m. It adds each
+  table's display text through TruthTable.with_display:
+  the tabulated expression in the label and, when
+  simplification ran, the simplified formula in
+  canonical order (InfixPrinter). report() is a pure
+  formatter for the CLI. All three take their owned
+  argument by value (ADR-044, ADR-046, ADR-047).
 end note
 
 UI --> Orchestrator
@@ -57,6 +67,9 @@ Orchestrator ..> Parser : <<use>>
 Orchestrator ..> Simplifier : <<use>>
 Orchestrator ..> Interpreter : <<use>>
 Orchestrator ..> TruthTable : with_display
+Orchestrator ..> Evaluation : <<create>>
+Evaluation --> TruthTable : table
+Evaluation --> Simplification : simplification
 Orchestrator ..> InfixPrinter : <<use>>
 Orchestrator ..> Expression : <<use>>
 Orchestrator ..> Error : <<use>>

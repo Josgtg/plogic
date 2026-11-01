@@ -7,13 +7,31 @@ hide empty members
 class Orchestrator
 
 class Simplifier {
-  +{static} simplify(expression: Expression): Expression
+  +{static} simplify(expression: Expression): Simplification
   -{static} erase_grouping(expression: Expression): Expression
-  -{static} reduce(expression: Expression): Expression
+  -{static} reduce(expression: Expression): Simplification
   -{static} canonicalize(expression: Expression): Expression
-  -{static} expand(expression: Expression): Expression
+  -{static} expand(expression: Expression, steps: List<Step>): Simplification
   -{static} weight(expression: Expression): int
   -{static} compare(left: Expression, right: Expression): int
+}
+
+class Simplification {
+  +expression: Expression
+  +steps: List<Step>
+}
+
+class Step {
+  +rule: Rule
+  +expression: Expression
+}
+
+enum Rule {
+  IdempotenceA
+  ...
+  DistributionB
+  ++
+  +label(): str
 }
 
 abstract class Expression
@@ -29,8 +47,9 @@ class Literal
 class Identifier
 
 note bottom of Simplifier
-  Pure and total: Expression in, Expression out, no
-  errors. Never constructed.
+  Pure and total: Expression in, Simplification out
+  (final expression plus applied steps), no errors.
+  Never constructed.
 
   Four parts:
   0. erase grouping: every Grouping is stripped first;
@@ -42,8 +61,13 @@ note bottom of Simplifier
      fixed point; every rule strictly lowers the
      weight W. Rules run in law-table order, and a
      two-operand rule matches any pair of the chain.
+     Each applied law appends a Step with its canonical
+     result; canonicalization itself is not a step.
   3. expand: laws 4a/4b are tried one at a time and
-     kept only if W(candidate) < W(best).
+     kept only if W(candidate) < W(best). A rejected
+     candidate leaves no step; an accepted one appends
+     its Distribution step and the reduction steps it
+     triggered (ADR-047).
 
   Conditional and biconditional are eliminated, so
   the output contains only ¬, ∧ and ∨. The result is
@@ -67,6 +91,10 @@ end note
 
 Orchestrator ..> Simplifier : <<use>>
 Simplifier ..> Expression : <<use>>
+Simplifier ..> Simplification : <<create>>
+Simplification --> Step : steps
+Step --> Rule : rule
+Step --> Expression : expression
 
 Binary --|> Expression
 Unary --|> Expression

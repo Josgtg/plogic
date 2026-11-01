@@ -3,7 +3,8 @@
 Role: rewrites a proposition into an equivalent proposition of no greater
 weight (strictly lower whenever a rewrite applies; defined below), using the
 laws of propositional algebra (components diagram, steps 6-7). The Simplifier
-is pure and total: `Expression` in, `Expression` out, no errors. Its output
+is pure and total: `Expression` in, a `Simplification` out (the final
+expression and the ordered steps that produced it), no errors. Its expression
 contains only negation, conjunction and disjunction (written `!`, `&`, `|`
 here and displayed as `¬`, `∧`, `∨`): conditionals and biconditionals are
 eliminated.
@@ -44,6 +45,31 @@ The strategy has four parts:
 
 The result is equivalent (same truth table). No particular normal form is
 guaranteed.
+
+## Process list
+
+`simplify(expression)` returns a `Simplification`:
+
+- `expression` — the final simplified tree, what earlier versions returned
+  alone.
+- `steps` — the applied laws, in order, as `Step { rule, expression }`. Each
+  step holds the canonical formula produced by that law. `Rule` names the law
+  with its table number and a Spanish label, for example `10a. De Morgan` or
+  `4b. Factorización`; the CLI prints it and does not invent names of its own.
+
+Only applied laws enter the list. Grouping erasure (step 0) and
+canonicalization (step 1) are not steps: they are not oriented rewrites and
+have no law number of their own. Reduction appends one step per single rewrite
+in the order of "Order of application". The expansion phase records nothing
+for a candidate it discards; when it accepts one, it appends the distribution
+step followed by every reduction step that candidate triggered. A formula that
+needs no law has an empty list, even if canonicalization reordered its
+operands.
+
+Because a step stores the canonical result, a step's formula can differ from
+the previous one by sorting as well as by the law. The sequence is still the
+exact order the implementation followed, and it is deterministic by ADR-042.
+The CLI shows the list only with `-m`/`--mostrar-proceso` (ADR-047).
 
 ## Canonical order
 

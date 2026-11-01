@@ -16,8 +16,14 @@ interface UI {
 class CLI
 
 class Orchestrator {
-  +{static} evaluate(source: str, simplify: bool): Result<List<TruthTable>, List<Error>>
+  +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
+  +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
   +{static} report(error: Error): str
+}
+
+class Evaluation {
+  +table: TruthTable
+  +simplification: Simplification?
 }
 
 enum TokenType {
@@ -108,7 +114,45 @@ enum Error {
 }
 
 class Simplifier {
-  +{static} simplify(expression: Expression): Expression
+  +{static} simplify(expression: Expression): Simplification
+}
+
+class Simplification {
+  +expression: Expression
+  +steps: List<Step>
+}
+
+class Step {
+  +rule: Rule
+  +expression: Expression
+}
+
+enum Rule {
+  IdempotenceA
+  IdempotenceB
+  IdentityA
+  IdentityB
+  DominationA
+  DominationB
+  DoubleNegation
+  ComplementA
+  ComplementB
+  NegatedTrue
+  NegatedFalse
+  DeMorganA
+  DeMorganB
+  AbsorptionA
+  AbsorptionB
+  RedundancyA
+  RedundancyB
+  Conditional
+  Biconditional
+  FactoringA
+  FactoringB
+  DistributionA
+  DistributionB
+  --
+  +label(): str
 }
 
 class Interpreter {
@@ -146,6 +190,15 @@ Orchestrator ..> Interpreter : <<use>>
 Orchestrator ..> TruthTable : with_display
 Orchestrator ..> InfixPrinter : <<use>>
 Orchestrator ..> Error : <<use>>
+Orchestrator ..> Evaluation : <<create>>
+
+Evaluation --> TruthTable
+Evaluation --> Simplification
+
+Simplifier ..> Simplification : <<create>>
+Simplification --> Step : steps
+Step --> Rule
+Step --> Expression
 
 Scanner ..> ScanState : <<use>>
 Parser ..> ParseState : <<use>>

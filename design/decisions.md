@@ -58,6 +58,7 @@ ADR-nnn`.
 | 044 | Orchestrator arguments are owned | Accepted |
 | 045 | CLI layout details: free functions, alignment, numbering and separators | Accepted |
 | 046 | Simplified tables by default; `-s` prints only the simplified formula | Accepted |
+| 047 | The Simplifier returns its applied steps, shown with `-m` | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1263,6 +1264,54 @@ Consequences: the default output now shows the small, canonical table, and
 and variable order. The CLI surface breaks once, before publication. The
 formula-only mode is the cheapest path through the pipeline (no interpreter,
 no table, no size limit) and is available in the interactive session too.
+
+## ADR-047 — The Simplifier returns its applied steps, shown with `-m`
+
+Status: Accepted
+
+Context: The Simplifier exposed only the final `Expression`, so a user could
+see that a formula had changed but not which laws changed it. The requested
+feature is a numbered list of the applied rules and the formula each produced,
+returned alongside the final result and printed by the CLI behind a new
+`--mostrar-proceso` flag. Several choices were open: whether every rewrite or
+only some become entries, how a rule is named, how the trace travels through
+the Orchestrator to the CLI, what the CLI prints when nothing was applied, and
+which short flag can spell the request. `-mp` cannot be a clap short flag: a
+short is one character, and `-mp` would parse as `-m -p`.
+
+Decision: `Simplifier::simplify(&Expression)` returns
+`Simplification { expression, steps }`, where each `Step { rule, expression }`
+names one applied law (`Rule`, with `label()` giving the law number and the
+Spanish name, e.g. `10a. De Morgan`) and holds the canonical formula that law
+produced. Only applied laws become steps: grouping erasure and
+canonicalization are not steps, and an expansion candidate that is discarded
+is not recorded. An accepted expansion records its distribution step followed
+by the reduction steps it triggered. Reduction and expansion both record every
+single rewrite, in order. `Orchestrator::evaluate` returns
+`Vec<Evaluation { table, simplification: Option<Simplification> }>` so the
+table stays a pure table, and `Orchestrator::simplify` returns
+`Vec<Simplification>`. The CLI flag is `-m` / `--mostrar-proceso`; it works in
+every mode, composes with `-s` and `-o`, and conflicts with
+`--no-simplificar` (`'--mostrar-proceso' no se puede usar con
+'--no-simplificar'`), since no simplification exists to trace. The process
+block appears after `Simplificada:`, separated by a blank line, headed
+`Proceso:` and with one `1. <law>: <formula>` line per step; when no law
+applied the block is omitted entirely.
+
+Alternatives: return a tuple `(Expression, Vec<Step>)` (less self-documenting);
+trace only reduction rules (would hide distribution and its follow-up
+reductions); group consecutive uses of one law (shorter, but no longer a
+step-by-step derivation); attach the steps to `TruthTable` (couples the table
+to the Simplifier); always print an empty `Proceso:` heading (looks like a
+bug); spell the flag `--mostrar-proceso` with no short alias (viable, but every
+other option has one, and `-m` is free).
+
+Consequences: the derivation is deterministic because it follows the fixed
+rule and traversal order of ADR-042, and its formulas are canonical, so a step
+may also show canonical reordering performed after the law. The core keeps its
+purity: the trace is data, and only the CLI turns it into text. The extra
+allocation is small for these trees, and callers that do not care about the
+trace use `simplification.expression`.
 
 ## Errata
 

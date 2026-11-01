@@ -135,7 +135,9 @@ biconditional expansion can add some). By default the truth table is built
 from the reduced formula and the formula is shown as a `Simplificada:` line;
 `--no-simplificar` builds the table from the original and omits that line.
 `-s` / `--simplificar` simplifies and prints only the reduced formula, with
-no table.
+no table. `-m` / `--mostrar-proceso` adds the ordered list of laws that were
+applied, each with the formula it produced, so the derivation can be followed
+step by step.
 
 ## Errors
 

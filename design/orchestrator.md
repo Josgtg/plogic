@@ -8,17 +8,19 @@ its entry points are pure static methods.
 ## API
 
 - `Orchestrator.evaluate(source: str, simplify: bool):
-  Result<List<TruthTable>, List<Error>>` — runs the whole pipeline over the
-  source text of one or more propositions and returns one truth table per
-  proposition, in input order. `simplify` reflects the user's choice (the
-  CLI's `--no-simplificar` flag); when false the Simplifier is skipped and
-  the original is tabulated. When true the table is built from the
-  simplified expression, whose label and canonical text are also the table's
-  display text.
-- `Orchestrator.simplify(source: str): Result<List<str>, List<Error>>` — runs
-  scan, parse and simplify only, returning each proposition's normalized
-  infix text in input order. It builds no tables, so the size limit does not
-  apply (`--simplificar`).
+  Result<List<Evaluation>, List<Error>>` — runs the whole pipeline over the
+  source text of one or more propositions and returns one `Evaluation` per
+  proposition, in input order. `Evaluation { table: TruthTable, simplification:
+  Simplification? }` carries the table and, when the Simplifier ran, the
+  simplification that produced its formula (final expression and steps). When
+  `simplify` is false the Simplifier is skipped, `simplification` is empty and
+  the original is tabulated. When true the table is built from the simplified
+  expression, whose label and canonical text are also the table's display
+  text.
+- `Orchestrator.simplify(source: str): Result<List<Simplification>,
+  List<Error>>` — runs scan, parse and simplify only, returning each
+  proposition's final expression with its steps in input order. It builds no
+  tables, so the size limit does not apply (`--simplificar`).
 - `Orchestrator.report(error: Error): str` — formats one error (see
   error_handling.md).
 
@@ -28,7 +30,7 @@ All three entry points take their owned argument by value: `evaluate` and
 out of a list (ADR-044).
 
 Failure is signalled by `Err`: the failing stage's error list. `Ok` always
-carries one table per proposition (`evaluate`) or one formula per
+carries one evaluation per proposition (`evaluate`) or one simplification per
 proposition (`simplify`).
 
 ## Flow
@@ -44,15 +46,16 @@ The pipeline, in order (the components diagram's ten arrows):
    nothing is simplified or evaluated. `simplify` stops here.
 6. Per proposition: `Simplifier.simplify(expression)` when `simplify` is
    on; otherwise this step is skipped.
-7. The simplified expression, kept alongside the original when step 6 ran.
+7. The simplified expression and its steps, kept alongside the original when
+   step 6 ran.
 8. Choose the expression to tabulate: the simplified expression when
    `simplify` is true, the original otherwise; call
    `Interpreter.interpret(chosen)`.
 9. Stage gate: on `Err(eval error)` — the size limit of interpreter.md —
    `evaluate` returns it and no truth tables are produced at all. Otherwise
    the step produces the `TruthTable`.
-10. The Orchestrator collects the tables and returns `Ok(tables)`; the UI
-    presents them.
+10. The Orchestrator collects the evaluations and returns `Ok(evaluations)`;
+    the UI presents their tables and, with `-m`, their simplification steps.
 
 Steps 6–9 repeat once per proposition; steps 1–5 and 10 happen once per run.
 Step 9 aborts the run on the first `EvalError`. The Orchestrator also adds

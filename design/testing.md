@@ -92,6 +92,12 @@ invocation per case). Level 7 covers the product examples end to end.
 - Determinism: the rules apply in the law table's order and the expansion
   visits the tree pre-order, so the same input gives the same output
   (ADR-042); a chain rule matches any pair of operands of a longer chain.
+- Process list: `simplify` returns the final expression and the applied steps.
+  `!(!p | !q)` gives `De Morgan` (`!p`/`!q` rewritten), then two
+  `Doble negación` steps; `p -> q` gives one `Condicional` step; a formula that
+  needs no law (`p`) has no steps. Each step's formula is canonical, a
+  discarded expansion leaves no step, and the steps' final formula equals the
+  returned expression (ADR-047).
 - Termination on the shapes that could oscillate: factoring then expansion,
   `p & (q | r)`, nested De Morgan, double negation.
 - Expansion phase accepts only strict improvements — the rejected candidate of
@@ -127,11 +133,13 @@ Property tests over generated expressions:
 ## 5. Orchestrator
 
 - Default table: the simplified expression decides variables, rows, size check
-  and label. `p -> q` gives columns `q, p`, label `q ∨ ¬p`, and simplified text
-  `q ∨ ¬p`.
+  and label. `p -> q` gives columns `q, p`, label `q ∨ ¬p`, simplified text
+  `q ∨ ¬p`, and an `Evaluation` whose `simplification` is `Some` with one
+  `Condicional` step.
 - `simplify = false`: the original expression decides everything. `p -> q`
-  gives columns `p, q`, label `p → q`, no simplified text, and the same
-  results as the default.
+  gives columns `p, q`, label `p → q`, no simplified text, and
+  `simplification == None`; its rows still have the same results as the
+  default table.
 - `p | !p` default: no variable columns, one row, label `V`, simplified text
   `V`, classification tautology. With `simplify = false`: columns `p`, rows `F`
   and `V`, result all `V`, label `p ∨ ¬p`, no simplified text.
@@ -139,10 +147,11 @@ Property tests over generated expressions:
   `p1 | !p1 | p2 | ... | p13`): the default succeeds with one row; with
   `simplify = false` it returns
   `Err([EvalError("resultado muy largo: más de 4096 filas")])`.
-- `Orchestrator.simplify` (formula-only): `p -> q` returns `["q ∨ ¬p"]`; the
-  13-variable tautology returns `["V"]` without the size check; batch order is
-  input order; an empty source returns `Ok([])`; scan and parse errors gate it
-  exactly like `evaluate`.
+- `Orchestrator.simplify` (formula-only): `p -> q` returns one
+  `Simplification` whose expression prints `q ∨ ¬p` and whose steps name
+  `Condicional`; the 13-variable tautology returns `V` without the size check;
+  batch order is input order; an empty source returns `Ok([])`; scan and parse
+  errors gate it exactly like `evaluate`.
 - Stage gates: a scan error returns no parse errors; a parse error returns no
   tables; an eval error returns no tables.
 - Mixed error kinds never appear in one `Err` list.
@@ -165,8 +174,8 @@ Property tests over generated expressions:
   exit 2; ADR-034): no argument,
   modifier-only invocation, two mode flags, unknown flag, missing flag value,
   extra positional argument, empty `-p ''` / bare empty string, a single
-  proposition that is whitespace only, `-o` with `-i`, and
-  `-s` with `--no-simplificar`.
+  proposition that is whitespace only, `-o` with `-i`,
+  `-s` with `--no-simplificar`, and `-m` with `--no-simplificar`.
 - Dash-prefixed arguments: `-x` and `->` are `opción desconocida`; `--`
   followed by `->` passes it through as a proposition, which then fails at
   parse time with `se esperaba una expresión`; `plogic -p p --` is valid;
@@ -176,21 +185,25 @@ Property tests over generated expressions:
   (`-p '  p  '`) still scans normally.
 - Repeated flags (ADR-031): `-p p -p q`, `-i -i` and `-a f -a g` report
   `solo se puede usar un modo a la vez`; `-s -s` reports
-  `argumento inesperado: '-s'`, `--no-simplificar --no-simplificar` reports
+  `argumento inesperado: '-s'`, `-m -m` reports
+  `argumento inesperado: '-m'`, `--no-simplificar --no-simplificar` reports
   `argumento inesperado: '--no-simplificar'`, and `-o a -o b` reports
   `argumento inesperado: '-o'`; all exit 2.
 - Usage-error precedence: `-x -i -o out.txt` reports
   `opción desconocida: '-x'` (unknown flag before the `-o` conflict);
   `-i -o out.txt -s --no-simplificar` reports
   `'--simplificar' no se puede usar con '--no-simplificar'` before
-  `'-o' no se puede usar con '--interactivo'`, and prints exactly one message.
+  `'-o' no se puede usar con '--interactivo'`, and prints exactly one message;
+  `-m --no-simplificar` reports
+  `'--mostrar-proceso' no se puede usar con '--no-simplificar'`.
   A `-p` missing its value wins over the extra positional that follows.
 - Exact strings: a table-driven test asserts the layout of a usage error — the
   specific message, a blank line, then the exact help screen from `ui.md` — for
   `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`,
   `solo se puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
-  `no se proporcionó ninguna proposición`, and the two conflict messages
-  (`'--simplificar' no se puede usar con '--no-simplificar'` and
+  `no se proporcionó ninguna proposición`, and the three conflict messages
+  (`'--simplificar' no se puede usar con '--no-simplificar'`,
+  `'--mostrar-proceso' no se puede usar con '--no-simplificar'` and
   `'-o' no se puede usar con '--interactivo'`), with exit 2; the read/write
   messages with exit 1; and the redirect notification
   `la salida se escribió en plogic-output.txt` on stderr.
@@ -215,6 +228,13 @@ Property tests over generated expressions:
 - Presentation: `present` separates the simplified line, the table and the
   classification with blank lines; with `--no-simplificar` only the blank line
   between the table and the classification remains (ADR-029).
+- `-m` / `--mostrar-proceso`: after `Simplificada:` and a blank line, a
+  `Proceso:` block with one numbered `<law>: <formula>` line per applied step;
+  omitted entirely when no law applied, and absent without `-m`. It combines
+  with table mode and with `-s`, works in every mode, is written by `-o`, and
+  conflicts with `--no-simplificar` (ADR-047). For `p -> q` the block is
+  exactly `1. 13a. Condicional: q ∨ ¬p`; for `!(!p | !q)` it lists
+  `10a. De Morgan`, then two `7a. Doble negación` steps.
 - Table layout: cells are left-aligned to the widest text of their column
   (header included), columns are separated by two spaces, `| ` introduces the
   result column and the last column is unpadded, so no line has trailing
@@ -223,8 +243,9 @@ Property tests over generated expressions:
   line, blocks are separated by one blank line, the counter counts only built
   tables, and single-proposition mode has no heading (ADR-045).
 - `-s` / `--simplificar` prints only `Simplificada: <formula>`, with no table
-  and no classification, in every mode; it combines with `-o` and with the
-  file-mode numbering, never triggers the automatic redirect, and conflicts
+  and no classification, in every mode; it combines with `-o`, with `-m` and
+  with the file-mode numbering, never triggers the automatic redirect, and
+  conflicts
   with `--no-simplificar`.
 - `--no-simplificar` omits only the `Simplificada:` line, never the
   classification.

@@ -27,6 +27,10 @@ for `-o`, with `-i`):
 - `-s`, `--simplificar` simplifies and prints only the simplified formula:
   no truth table and no classification. It cannot be combined with
   `--no-simplificar`.
+- `-m`, `--mostrar-proceso` adds the `Proceso:` list: the applied laws in
+  order, each with the formula it produced. It combines with the default table
+  and with `-s`; it cannot be combined with `--no-simplificar`, since no
+  simplification exists to trace.
 - `-o <path>` (long form `--salida <path>`) writes the output to the file
   in `<path>` rather than to the console.
 
@@ -42,14 +46,16 @@ invocation or a modifier-only invocation), more than one mode flag, an unknown
 flag, a missing flag value, an extra positional argument, or a single
 proposition that is empty after trimming, the CLI prints a usage message and
 exits with code 2.
-`--simplificar` together with `--no-simplificar`, and `--salida`
+`--simplificar` together with `--no-simplificar`, `--mostrar-proceso`
+together with `--no-simplificar`, and `--salida`
 together with `--interactivo`, are also usage errors: there is nothing to
-simplify, and a session produces many tables with no single file for them.
+simplify, nothing to trace, and a session produces many tables with no single
+file for them.
 
 A flag may appear only once. A repeated mode flag (`-p`, `-a`, `-i`) is
-`solo se puede usar un modo a la vez`; a repeated `-s`, `--no-simplificar`
-or `--salida` is `argumento inesperado: '<flag>'`, with the flag as
-the user typed it (ADR-031).
+`solo se puede usar un modo a la vez`; a repeated `-s`, `-m`,
+`--no-simplificar` or `--salida` is `argumento inesperado: '<flag>'`, with the
+flag as the user typed it (ADR-031).
 
 An argument that begins with `-` is always an option, except `--`. `--` ends option
 parsing and is never an option value: a following argument is the bare
@@ -80,6 +86,7 @@ opciones:
   -i, --interactivo          inicia una sesión interactiva
       --no-simplificar       no simplifica la proposición
   -s, --simplificar          muestra solo la proposición simplificada
+  -m, --mostrar-proceso      muestra el proceso de simplificación
   -o, --salida <archivo>     escribe la salida en <archivo>
   -h, --help                 muestra esta ayuda
   -V, --version              muestra la versión
@@ -143,7 +150,12 @@ Orchestrator stays pure):
 1. when simplification ran (the default): the simplified formula in
    canonical form, e.g. `Simplificada: p ∧ ¬q`. It repeats the table's
    label.
-2. the truth table — the variable columns and the result column, aligned,
+2. with `-m`/`--mostrar-proceso`, and only when at least one law applied: the
+   `Proceso:` block, one numbered line per step, e.g.
+   `1. 13a. Condicional: q ∨ ¬p`. The label is the law number and Spanish name
+   from the Simplifier's `Rule`; the formula is the canonical result of that
+   step. Steps appear in the order the Simplifier followed them.
+3. the truth table — the variable columns and the result column, aligned,
    with `V` and `F` as values, following the layout in truth_table.md; the
    result column is labelled with the evaluated proposition in normalized
    form. In these cells only, `V` is green and `F` is red when the output is
@@ -152,19 +164,21 @@ Orchestrator stays pure):
    canonical order; with `--no-simplificar` it is the original proposition,
    keeping the order and grouping the user wrote (redundant parentheses
    removed).
-3. always: a classification line, e.g.
+4. always: a classification line, e.g.
    `Esta proposición es una tautología.`
 
 When the user passed `--no-simplificar`, the simplified formula is not
 printed (item 1); the table and the classification are still printed.
-A blank line separates the printed items: after the simplified line, after
-the table, and before the classification. With `--no-simplificar` only the
-last separator remains, between the table and the classification.
+A blank line separates the printed items: after the simplified line, around
+the process block, after the table, and before the classification. With
+`--no-simplificar` only the last separator remains, between the table and the
+classification.
 
 With `--simplificar` there is no table and no classification: the
-presentation is only the `Simplificada: <formula>` line, once per
-proposition, with the file-mode heading and block separation when reading a
-file.
+presentation is only the `Simplificada: <formula>` line and, with `-m`, its
+`Proceso:` block, once per proposition, with the file-mode heading and block
+separation when reading a file. When the Simplifier applied no law, the
+process block is omitted entirely, even when `-m` was passed (ADR-047).
 
 The table is left-aligned: every cell is padded to the width of the widest
 text in its column, header included, with two spaces between columns and
@@ -182,9 +196,11 @@ associativity requires (see truth_table.md).
 
 - The prompt `> ` accepts one proposition per line; each line is evaluated
   on its own (`evaluate` over that single line) and presented immediately.
-- `--no-simplificar` and `--simplificar` each apply to every line;
-  using them together is a usage error, as in the other modes.
-- With `--simplificar`, each line prints its `Simplificada:` formula only.
+- `--no-simplificar`, `--simplificar` and `--mostrar-proceso` each apply to
+  every line; `--no-simplificar` with either of the other two is a usage
+  error, as in the other modes.
+- With `--simplificar`, each line prints its `Simplificada:` formula only;
+  with `-m` it also prints that formula's `Proceso:` block.
 - An error on one line prints its formatted errors and the session
   continues — a bad proposition does not end the session.
 - A blank or whitespace-only line evaluates nothing and just shows a new
@@ -208,15 +224,16 @@ associativity requires (see truth_table.md).
   `falta el valor de '<flag>'`, `opción desconocida: '<flag>'`, `solo se
   puede usar un modo a la vez`, `argumento inesperado: '<arg>'`,
   `'-o' no se puede usar con '--interactivo'`,
-  `'--simplificar' no se puede usar con '--no-simplificar'` and
+  `'--simplificar' no se puede usar con '--no-simplificar'`,
+  `'--mostrar-proceso' no se puede usar con '--no-simplificar'` and
   `no se proporcionó ninguna proposición`. Help and version are the parser's
   and are printed when it reaches them, so an earlier argument's error wins
   (ADR-033). When several usage errors apply, the CLI reports one
   message, the first in this order: unknown flag, missing flag value, more than
   one mode, extra positional, no proposition,
-  `--simplificar` with `--no-simplificar`, `-o` with `--interactivo`
-  (ADR-027). A repeated flag counts at the place of the message it reuses
-  (ADR-031).
+  `--simplificar` with `--no-simplificar`, `--mostrar-proceso` with
+  `--no-simplificar`, `-o` with `--interactivo` (ADR-027, ADR-047). A repeated
+  flag counts at the place of the message it reuses (ADR-031).
 - Exit codes: 0 on success or on help/version, 1 on any failing run (scan,
   parse, evaluation, a file with no propositions, or an I/O failure), 2 for
   usage errors.

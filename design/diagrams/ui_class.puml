@@ -19,7 +19,7 @@ class TruthTable
 
 note bottom of CLI
   The only impure component. It parses the command
-  line (-p, -a, -i, -s, -h, -V and their long
+  line (-p, -a, -i, -s, -m, -o, -h, -V and their long
   forms in ui.md), renders the help screen from the
   argument definitions, reads and writes files and
   prints. Help/version are clap's: they print in
@@ -33,12 +33,14 @@ end note
 
 note bottom of UI
   present() prints, in order: the simplified formula
-  (when simplification ran, the default), the aligned
-  truth table, and always the classification line, with a
-  blank line between items. With --no-simplificar the
-  first line is omitted and the table is the original.
-  With --simplificar only the Simplificada: line is
-  printed, with no table and no classification.
+  (when simplification ran, the default), optionally
+  the Proceso: list with -m (omitted when no law
+  applied), the aligned truth table, and always the
+  classification line, with a blank line between items.
+  With --no-simplificar the first line is omitted and
+  the table is the original. With --simplificar only
+  the Simplificada: line and its optional Proceso:
+  block are printed, with no table and no classification.
   Interactive sessions never redirect; every
   non-interactive run may redirect to plogic-output.txt
   when a table exceeds 1024 rows (never with
@@ -53,7 +55,8 @@ note bottom of UI
   File mode numbers its tables ("Proposición n:") and
   separates them with a blank line; interactive mode
   separates a table or an error from the next prompt
-  with a blank line (ADR-045).
+  with a blank line (ADR-045). The process lines read
+  "n. <law>: <formula>" (ADR-047).
 end note
 
 CLI ..|> UI
