@@ -60,6 +60,7 @@ ADR-nnn`.
 | 046 | Simplified tables by default; `-s` prints only the simplified formula | Accepted |
 | 047 | The Simplifier returns its applied steps, shown with `-m` | Accepted |
 | 048 | A graphical window opens on a bare `plogic`, built with egui/eframe | Accepted |
+| 049 | GUI modes are snapshotted; tables are only built below ten variables | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1377,6 +1378,53 @@ pure helpers are tested directly and the visual components are checked by eye.
 Large tables make a long window; the CLI remains the way to write huge tables to
 a file.
 
+## ADR-049 — GUI modes are snapshotted and tables are only built below ten variables
+
+Status: Accepted
+
+Context: ADR-048 first treated the GUI's table and process toggles as live
+display choices and always built a truth table. The design revision keeps the
+input section fixed, scrolls only the result section, centers the result, uses
+a one-column-set help list, and makes every mode a next-evaluation choice.
+Building a table for a formula with many variables is wasted work when the
+table is hidden, and the GUI does not need the CLI's 12-variable reach.
+
+Decision: The GUI's three controls are read once, when `Evaluar` (or Enter) is
+pressed. `Simplificar` decides whether that evaluation uses the simplified
+expression; `Mostrar tabla` decides whether that evaluation builds a table and
+shows the classification; `Mostrar proceso` decides whether that evaluation's
+process card is shown. Changing any control after an evaluation does not alter
+the stored result; it only affects the next `Evaluar`. Editing, inserting or
+clearing the formula does not replace the stored result either.
+
+The GUI calls `Orchestrator.assess(source, simplify, max_variables)`, which
+returns `Assessment { formula, variables, simplification, table: Option }`.
+With `Mostrar tabla` on, the GUI passes `Some(10)`, so a table is built only
+when the chosen expression has fewer than ten distinct variables; otherwise
+`table` is `None` and the result shows a muted note with the variable count.
+With `Mostrar tabla` off, it passes `None` and no table is built at all. The
+classification is derived from the table, so it appears only when a table was
+built. The CLI keeps `Orchestrator.evaluate` and its 12-variable / 4096-row
+behavior unchanged.
+
+The window keeps a fixed header and input section; only the result section
+scrolls. The result components are centered. The help is a collapsible
+one column set (`Símbolo`, `Nombre`, `También`) at 12.5 points.
+
+Alternatives: live toggles (rejected by the design revision); always building a
+table and hiding it (wasted work); applying the ten-variable limit to the CLI
+(would change existing behavior and tests); returning a table with a flag
+(would force CLI callers to handle a new missing table); counting variables in
+the GUI (would duplicate the Interpreter's definition).
+
+Consequences: `Orchestrator` gains `assess` and `Assessment`; the
+Interpreter's `variables` helper becomes `pub(crate)`. The GUI table limit is
+stricter than the CLI's, and a result without a table has no classification.
+The GUI tests cover the snapshot behavior, the no-table path and the
+ten-variable limit; the centered presentation and the one help column set are
+checked by eye.
+`Orchestrator.evaluate` and the CLI tests are unchanged.
+
 ## Errata
 
 - ADR-001 lists `Orchestrator.evaluate(source, simplify)`; the signature gained
@@ -1439,3 +1487,8 @@ a file.
   conjunction word and can never be an identifier. `o` is before `p` and is not
   a candidate. `p` is returned when every usable letter is used; the test for
   the all-letters case is the reason this clarification exists.
+- ADR-048's whole-window scroll, live table/process toggles, two-group help,
+  card layout and 12-variable table text are refined by ADR-049: the header
+  and input section stay fixed, only the result section scrolls and is
+  centered, the help is one column set, the three modes are snapshotted
+  at `Evaluar`, and the GUI builds tables only below ten variables.

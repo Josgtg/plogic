@@ -23,12 +23,20 @@ class GUI {
 class Orchestrator {
   +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
   +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
+  +{static} assess(source: str, simplify: bool, max_variables: int?): Result<List<Assessment>, List<Error>>
   +{static} report(error: Error): str
 }
 
 class Evaluation {
   +table: TruthTable
   +simplification: Simplification?
+}
+
+class Assessment {
+  +formula: str
+  +variables: int
+  +simplification: Simplification?
+  +table: TruthTable?
 }
 
 enum TokenType {
@@ -197,9 +205,12 @@ Orchestrator ..> TruthTable : with_display
 Orchestrator ..> InfixPrinter : <<use>>
 Orchestrator ..> Error : <<use>>
 Orchestrator ..> Evaluation : <<create>>
+Orchestrator ..> Assessment : <<create>>
 
 Evaluation --> TruthTable
 Evaluation --> Simplification
+Assessment --> TruthTable
+Assessment --> Simplification
 
 Simplifier ..> Simplification : <<create>>
 Simplification --> Step : steps

@@ -21,17 +21,25 @@ its entry points are pure static methods.
   List<Error>>` — runs scan, parse and simplify only, returning each
   proposition's final expression with its steps in input order. It builds no
   tables, so the size limit does not apply (`--simplificar`).
+- `Orchestrator.assess(source: str, simplify: bool, max_variables: int?):
+  Result<List<Assessment>, List<Error>>` — the GUI's entry point. It always
+  returns the normalized formula, the variable count and, when the Simplifier
+  ran, the simplification with its steps. The table is built only when
+  `max_variables` is `Some(limit)` and the chosen expression has fewer than
+  `limit` distinct variables; with `None` no table is built at all.
+  `Assessment { formula: str, variables: int, simplification:
+  Simplification?, table: TruthTable? }`.
 - `Orchestrator.report(error: Error): str` — formats one error (see
   error_handling.md).
 
-All three entry points take their owned argument by value: `evaluate` and
-`simplify` consume the source text, which the scanner stores anyway
+All entry points take their owned argument by value: `evaluate`, `simplify`
+and `assess` consume the source text, which the scanner stores anyway
 (ADR-038), and `report` consumes the error, which the UI has already moved
 out of a list (ADR-044).
 
 Failure is signalled by `Err`: the failing stage's error list. `Ok` always
-carries one evaluation per proposition (`evaluate`) or one simplification per
-proposition (`simplify`).
+carries one result per proposition: one `Evaluation` per proposition for
+`evaluate`, one `Simplification` for `simplify`, one `Assessment` for `assess`.
 
 ## Flow
 
@@ -56,6 +64,13 @@ The pipeline, in order (the components diagram's ten arrows):
    the step produces the `TruthTable`.
 10. The Orchestrator collects the evaluations and returns `Ok(evaluations)`;
     the UI presents their tables and, with `-m`, their simplification steps.
+
+`assess` follows steps 1–7, counts the distinct variables of the chosen
+expression, and then builds the table only when its `max_variables` policy
+allows it. With `None`, steps 8–9 are skipped and the assessment carries
+`table = None`; with `Some(limit)`, the Interpreter runs only when
+`variables < limit`. The GUI uses `Some(10)` when its table is on and `None`
+when it is off, so a hidden table is never processed.
 
 Steps 6–9 repeat once per proposition; steps 1–5 and 10 happen once per run.
 Step 9 aborts the run on the first `EvalError`. The Orchestrator also adds
@@ -83,4 +98,6 @@ is refused before it is built, with an `EvalError` (see interpreter.md);
 the check uses the expression chosen for the table, so the default checks
 the simplified one and `--no-simplificar` checks the original.
 `Orchestrator.simplify` builds no table, so neither limit applies to
-`--simplificar`.
+`--simplificar`. `Orchestrator.assess` with `None` builds no table, so neither
+limit applies there either; `assess` with `Some(10)` is the GUI's stricter
+policy (ADR-049).

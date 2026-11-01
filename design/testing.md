@@ -153,6 +153,18 @@ Property tests over generated expressions:
   `Condicional`; the 13-variable tautology returns `V` without the size check;
   batch order is input order; an empty source returns `Ok([])`; scan and parse
   errors gate it exactly like `evaluate`.
+- `Orchestrator.assess` with `max_variables = None`: `p -> q` returns one
+  `Assessment` with formula `q ∨ ¬p`, `variables == 2`, one `13a. Condicional`
+  step, and `table == None`; with `simplify = false` the formula is `p → q`,
+  `simplification == None` and the table is still `None`.
+- `Orchestrator.assess` with `Some(10)`: a 2-variable proposition builds a
+  table (label `q ∨ ¬p`); a 9-variable proposition builds one; a 10-variable
+  proposition has `table == None`, `variables == 10`, and still returns its
+  formula and steps; a 13-variable tautology with `simplify = false` is not
+  refused because no table is built (with `simplify = true` it collapses to
+  `V` (zero variables, one row), and is tabulated). Batch order, empty `Ok([])` and
+  scan/parse gates match `evaluate`; the table is only built when
+  `variables < limit`.
 - Stage gates: a scan error returns no parse errors; a parse error returns no
   tables; an eval error returns no tables.
 - Mixed error kinds never appear in one `Err` list.
@@ -280,7 +292,7 @@ The window itself is not launched in automated tests. `main` dispatches on
 `gui::should_launch`; `args::parse([])` keeps its `NoProposition` unit test
 because the binary intercepts the empty list before calling it. The GUI state
 and the pure helpers live in `src/gui.rs` and are tested there; the rendered
-components are checked by eye.
+layout is checked by eye.
 
 - Entry: `should_launch` is true only for an empty argument list; false for a
   bare proposition, `-p`, `-a`, `-i`, `-h`, `-V`, `-m`, `--` and a
@@ -289,21 +301,31 @@ components are checked by eye.
   smoke test (run with no display, check stderr and exit 1).
 - Default state: `simplify` true, `show_table` true, `show_process` false, no
   outcome, empty input.
-- Evaluate `p -> q` with the defaults: one evaluation, `Simplificada:
-  q ∨ ¬p`, one `13a. Condicional` step, table label `q ∨ ¬p`, contingency.
-  The formula card's title is `Simplificada`; the process card is absent while
-  `show_process` is off; the table card has `q`, `p` and `Resultado` columns.
-- Evaluate with `simplify` false: the table has `p` and `q`, label `p → q`,
-  no simplified formula; the formula card's title is `Original`; there is no
-  process card.
-- Toggles: `show_table` false hides only the table card (formula and
-  classification stay); `show_process` true shows the process card when the
-  stored evaluation has steps and omits it when it has none. The controls are
-  independent; no toggle disables another.
-- Result lifetime: after one evaluation, changing the input, inserting a
-  symbol, pressing `Limpiar`, or changing `simplify` leaves the outcome
-  unchanged. Only `evaluate`/Enter replaces it. `Limpiar` clears the input and
-  cursor only.
+- Evaluate `p -> q` with the defaults: `Outcome::Evaluations` stores a `View`
+  with `show_table` true, `show_process` false and one `Assessment` whose
+  formula is `q ∨ ¬p`, whose `variables` is 2, whose simplification has one
+  `13a. Condicional` step and whose table is present with label `q ∨ ¬p` and
+  a contingency classification.
+- Snapshot options: after an evaluation, changing `simplify`, `show_table` or
+  `show_process` leaves the stored `View` and assessments unchanged. Only
+  `evaluate`/Enter replaces them. The same applies to editing the input,
+  inserting a symbol and `Limpiar` (which clears only the input and cursor).
+- Table off: evaluate with `show_table` false. The stored `View.show_table` is
+  false and every assessment has `table == None`; no table or classification
+  is produced. Turning `show_table` on afterwards leaves the stored result
+  unchanged; the next `evaluate` builds the table.
+- Table on, fewer than ten variables: `p -> q` has a table and a
+  classification. A 9-variable proposition also has one.
+- Table on, ten or more variables: a 10-variable proposition has
+  `table == None`, `variables == 10`, and still has its formula and steps; the
+  result shows the muted note with the variable count. A 13-variable
+  tautology is not refused.
+- Process snapshot: with `show_process` false the stored `View` is false and
+  the process is absent; turning it on afterwards does not change the stored
+  result. A later evaluate with it on stores true and shows the steps.
+- Simplify snapshot: evaluating with `simplify` true stores the simplified
+  formula and steps; changing the checkbox to false afterwards leaves that
+  stored result unchanged; the next evaluate stores the original formula.
 - Empty input: `evaluate` on an empty or whitespace-only field sets the error
   array to `no se proporcionó ninguna proposición`; it does not clear the
   field. A scan or parse error replaces the result with one red report line per
@@ -311,20 +333,21 @@ components are checked by eye.
 - Helpers: `next_variable` on an empty field gives `p`, on `p` gives `q`, on
   `p & q` gives `r`, skips `y` (reserved for conjunction), and gives `p` when
   every usable letter is used or the formula does not scan. `byte_index` maps
-  character indices to UTF-8 byte offsets;
-  insertion replaces a selection and leaves the cursor after the inserted
-  text. `value_cell` maps true to `V`/green and false to `F`/red; the
-  classification mapping is tautology/green, contradiction/red,
-  contingency/muted.
+  character indices to UTF-8 byte offsets; insertion replaces a selection and
+  leaves the cursor after the inserted text. `value_cell` maps true to
+  `V`/green and false to `F`/red; the classification mapping is
+  tautology/green, contradiction/red, contingency/muted.
 - Table data: one column per `table.variables`, one row per `table.rows`, a
   header of the variables plus `Resultado`, and `2^variables` rows. The table
-  is a real grid, horizontally scrollable when needed; the window is the only
-  vertical scroll. The visual layout (centered cells, alternating rows, fixed
-  header) is checked by eye.
-- Help: the compact list has the rows `¬ negación !, no`, `∧ conjunción &, y`,
-  `∨ disyunción |, o`, `→ implicación ->, entonces`, `↔ bicondicional
-  <->, sisolosi`, `V verdadero 1` and `F falso 0`, at a smaller size than the
-  body.
+  is a real grid, horizontally scrollable when needed; the result section is
+  the only vertical scroll. The visual layout (centered cells, alternating
+  rows, header above the body) is checked by eye.
+- Layout and help: the header and input section are fixed, the result section
+  scrolls and its contents are centered; the `Ayuda` list is collapsed by
+  default and, when open, is one column set with the rows
+  `¬ negación !, no`, `∧ conjunción &, y`, `∨ disyunción |, o`,
+  `→ implicación ->, entonces`, `↔ bicondicional <->, sisolosi`,
+  `V verdadero 1` and `F falso 0`, at 12.5 points (body 15). Checked by eye.
 - CLI: the integration suite never runs the binary with no arguments (that
   would open a window); `-p ''` and modifier-only invocations still cover the
   `NoProposition` usage error.

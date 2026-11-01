@@ -17,10 +17,12 @@ note top of UI
 end note
 
 note top of GUI
-  Bare `plogic` opens this window. It evaluates one
-  proposition and builds cards for the formula, the
-  optional process, the truth table and the
-  classification, with no fixed output box.
+  Bare `plogic` opens this window. It keeps the input
+  section fixed and scrolls only the centered result
+  components: formula, optional process, optional table
+  and classification. Modes are snapshotted at Evaluar;
+  the table is skipped when hidden and built only below
+  ten variables (ADR-049).
 end note
 
 note bottom of Scanner

@@ -73,13 +73,17 @@ scanner receives the original text.
 ## Graphical window
 
 Running `plogic` with no arguments opens the window in [gui.md](gui.md). It
-evaluates one proposition at a time. `Simplificar` selects the expression for
-the next evaluation (`--no-simplificar` is unchecking it), while `Mostrar
-tabla` and `Mostrar proceso` show or hide their cards over the stored result.
-The result is a set of separate cards below the proposition block, and the
-whole window scrolls. Editing, inserting or clearing the formula, or changing
-`Simplificar`, does not replace the stored result; only `Evaluar` does. The
-CLI modes `-a`, `-i` and `-o` are not available in the GUI.
+evaluates one proposition at a time. The header and input section are fixed;
+only the result section scrolls, and its centered components are the formula,
+the optional process, the optional table and the classification. `Simplificar`,
+`Mostrar tabla` and `Mostrar proceso` are all read once, when `Evaluar` is
+pressed; changing one afterwards only affects the next evaluation. `Mostrar
+tabla` off means the table is not processed at all; when it is on, the table is
+built only for fewer than ten variables, and the classification appears only
+with a table. Editing, inserting or clearing the formula does not replace the
+stored result either; only `Evaluar` does. The `Ayuda` list is collapsed by
+default and is one column set when opened. The CLI modes `-a`, `-i` and `-o`
+are not available in the GUI.
 
 ## Help and version
 

@@ -20,16 +20,24 @@ class PlogicApp {
   +insert_at_cursor(ctx: &Context, text: str)
 }
 
+class View {
+  +assessments: List<Assessment>
+  +show_table: bool
+  +show_process: bool
+}
+
 enum Outcome {
-  Evaluations(List<Evaluation>)
+  Evaluations(View)
   Errors(List<str>)
 }
 
 class Orchestrator
 
-class Evaluation {
-  +table: TruthTable
+class Assessment {
+  +formula: str
+  +variables: int
   +simplification: Simplification?
+  +table: TruthTable?
 }
 
 class TruthTable
@@ -45,22 +53,23 @@ class Step {
 }
 
 note bottom of PlogicApp
-  One vertically scrollable window. The help is a compact
-  list at a smaller size. The result is a set of separate
-  cards below the proposition block (formula, process,
-  truth table, classification), never a fixed output box.
-  Editing the formula, inserting a symbol, clearing it or
-  changing Simplificar does not replace the result; only
-  Evaluar does. Mostrar tabla and Mostrar proceso are
-  display choices over the stored result (ADR-048).
+  Fixed header and input section; only the result section
+  scrolls. The result components are centered; the help is
+  a collapsed single-column list at a smaller size. All
+  three modes are snapshotted in View when Evaluar is
+  pressed; changing one afterwards only affects the next
+  evaluation. Mostrar tabla off calls assess with no table;
+  on, assess builds only below ten variables. No table means
+  no classification (ADR-049).
 end note
 
 GUI ..> PlogicApp : <<create>>
 PlogicApp --> Outcome
-PlogicApp ..> Orchestrator : evaluate(source, simplify)
-Outcome --> Evaluation
-Evaluation --> TruthTable
-Evaluation --> Simplification
+Outcome --> View
+View --> Assessment
+PlogicApp ..> Orchestrator : assess(source, simplify, max_variables)
+Assessment --> TruthTable
+Assessment --> Simplification
 Simplification --> Step : steps
 
 @enduml

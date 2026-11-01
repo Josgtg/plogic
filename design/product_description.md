@@ -26,14 +26,17 @@ by Robert Nystrom, implementing a functional programming style rather than pure 
 ## Graphical window
 
 Running `plogic` with no arguments opens a dark, monospace window for one
-proposition at a time. Its help lists the accepted connectives and literals;
-the `Simplificar`, `Mostrar tabla` and `Mostrar proceso` controls choose the
-next evaluation and which result parts are shown; the toolbar inserts
-connectives, parentheses and variables; and `Evaluar` produces separate cards
-for the simplified (or original) formula, the optional process list, a real
-truth table and the classification. The window scrolls as a whole. Editing the
-formula does not replace the previous result: only `Evaluar` does. Any
-argument keeps the command-line interface.
+proposition at a time. The header and input section stay fixed; only the
+result section scrolls, and its centered components are the simplified (or
+original) formula, the optional process list, a real truth table and the
+classification. The collapsed help lists the accepted connectives and
+literals. The `Simplificar`, `Mostrar tabla` and `Mostrar proceso` controls are
+all read when `Evaluar` is pressed: with `Mostrar tabla` off the table is not
+processed, and with it on the table is built only for fewer than ten
+variables; the classification appears only with a table. The toolbar inserts
+connectives, parentheses and variables. Editing the formula does not replace
+the previous result: only `Evaluar` does. Any argument keeps the
+command-line interface.
 
 ## What is a proposition?
 

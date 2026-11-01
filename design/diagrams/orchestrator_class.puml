@@ -7,15 +7,26 @@ hide empty members
 interface UI {
 }
 
+class GUI {
+}
+
 class Orchestrator {
   +{static} evaluate(source: str, simplify: bool): Result<List<Evaluation>, List<Error>>
   +{static} simplify(source: str): Result<List<Simplification>, List<Error>>
+  +{static} assess(source: str, simplify: bool, max_variables: int?): Result<List<Assessment>, List<Error>>
   +{static} report(error: Error): str
 }
 
 class Evaluation {
   +table: TruthTable
   +simplification: Simplification?
+}
+
+class Assessment {
+  +formula: str
+  +variables: int
+  +simplification: Simplification?
+  +table: TruthTable?
 }
 
 class Token
@@ -36,31 +47,32 @@ enum Error
 note bottom of Orchestrator
   Stateless: pure composition of the pipeline
   scan -> parse -> per proposition (simplify ->
-  choose expression -> interpret). Failure is always
-  signalled by Result, with Err = List<Error>.
+  choose expression -> optional interpret). Failure is
+  always signalled by Result, with Err = List<Error>.
 
   Stage gates: a scan failure stops before parsing,
   a parse failure stops before simplification, and
-  an EvalError stops the whole run. Steps 6-9 repeat
-  once per parsed proposition.
+  an EvalError stops the whole run.
 
-  Step 8 tabulates the simplified expression by
-  default, or the original with --no-simplificar.
-  simplify() stops after simplification, returns each
-  Simplification (expression and steps) and builds no
-  tables, so no size limit applies (--simplificar).
-  evaluate() returns one Evaluation per proposition:
-  the table plus the Simplification when it ran, so
-  the CLI can print the process with -m. It adds each
-  table's display text through TruthTable.with_display:
-  the tabulated expression in the label and, when
-  simplification ran, the simplified formula in
-  canonical order (InfixPrinter). report() is a pure
-  formatter for the CLI. All three take their owned
-  argument by value (ADR-044, ADR-046, ADR-047).
+  evaluate() tabulates the simplified expression by
+  default, or the original with --no-simplificar, and
+  returns one Evaluation per proposition (table plus the
+  Simplification when it ran). simplify() stops after
+  simplification and builds no tables.
+
+  assess() is the GUI's entry point: it always returns
+  the formula, its variable count and the steps, but
+  builds a table only when max_variables is Some and the
+  count is below it. None skips the table entirely. The
+  GUI passes Some(10) when its table is on, so only
+  fewer than ten variables are tabulated (ADR-049).
+  report() is a pure formatter. All entry points take
+  their owned argument by value (ADR-044, ADR-046,
+  ADR-047, ADR-048, ADR-049).
 end note
 
 UI --> Orchestrator
+GUI --> Orchestrator
 
 Orchestrator ..> Scanner : <<use>>
 Orchestrator ..> Parser : <<use>>
@@ -68,11 +80,15 @@ Orchestrator ..> Simplifier : <<use>>
 Orchestrator ..> Interpreter : <<use>>
 Orchestrator ..> TruthTable : with_display
 Orchestrator ..> Evaluation : <<create>>
-Evaluation --> TruthTable : table
-Evaluation --> Simplification : simplification
+Orchestrator ..> Assessment : <<create>>
 Orchestrator ..> InfixPrinter : <<use>>
 Orchestrator ..> Expression : <<use>>
 Orchestrator ..> Error : <<use>>
+
+Evaluation --> TruthTable : table
+Evaluation --> Simplification : simplification
+Assessment --> TruthTable : table
+Assessment --> Simplification : simplification
 
 Scanner ..> ScanState
 Parser ..> ParseState
@@ -80,5 +96,6 @@ ScanState --> Token
 ParseState --> Token
 Interpreter ..> TruthTable : <<create>>
 UI ..> TruthTable : <<use>>
+GUI ..> Assessment : <<use>>
 
 @enduml
