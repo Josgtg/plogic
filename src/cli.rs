@@ -15,8 +15,8 @@ use colored::Colorize;
 use crate::args::{self, Config, Input, Simplification};
 use crate::error::Error;
 use crate::expression::InfixPrinter;
-use crate::orchestrator::{Evaluation, Orchestrator};
-use crate::simplifier::{Simplification as Simplified, Step};
+use crate::orchestrator::{Evaluation, Formula, Orchestrator};
+use crate::simplifier::Step;
 use crate::truth_table::{Classification, TruthTable};
 
 /// The file an oversized non-interactive run is written to (`design/ui.md`).
@@ -122,7 +122,9 @@ fn oversized(evaluations: &[Evaluation]) -> bool {
         .any(|evaluation| evaluation.table.rows.len() > REDIRECT_THRESHOLD)
 }
 
-/// The whole run's text, one block per table, separated by a blank line.
+/// The whole run's text, one block per table, separated by a blank line. In
+/// file mode each block starts with the numbered heading and the proposition
+/// as the source holds it (ADR-053).
 fn render(evaluations: &[Evaluation], numbered: bool, color: bool, show_process: bool) -> String {
     let blocks: Vec<String> = evaluations
         .iter()
@@ -130,7 +132,11 @@ fn render(evaluations: &[Evaluation], numbered: bool, color: bool, show_process:
         .map(|(index, evaluation)| {
             let presented = present(evaluation, color, show_process);
             if numbered {
-                format!("Proposición {}:\n\n{presented}", index + 1)
+                format!(
+                    "Proposición {}: {}\n\n{presented}",
+                    index + 1,
+                    evaluation.proposition
+                )
             } else {
                 presented
             }
@@ -140,23 +146,31 @@ fn render(evaluations: &[Evaluation], numbered: bool, color: bool, show_process:
 }
 
 /// The formula-only presentation of `--simplificar`: one `Simplificada:` line
-/// per proposition, separated by a blank line, with the file-mode heading and
-/// the optional `Proceso:` list.
-fn render_formulas(formulas: &[Simplified], numbered: bool, show_process: bool) -> String {
+/// per proposition, separated by a blank line, with the file-mode heading (the
+/// numbered proposition as the source holds it) and the optional `Proceso:`
+/// list.
+fn render_formulas(formulas: &[Formula], numbered: bool, show_process: bool) -> String {
     let blocks: Vec<String> = formulas
         .iter()
         .enumerate()
         .map(|(index, formula)| {
             let mut block = String::new();
             if numbered {
-                block.push_str(&format!("Proposición {}:\n\n", index + 1));
+                block.push_str(&format!(
+                    "Proposición {}: {}\n\n",
+                    index + 1,
+                    formula.proposition
+                ));
             }
             block.push_str("Simplificada: ");
-            block.push_str(&InfixPrinter::print(&formula.expression));
+            block.push_str(&InfixPrinter::print(&formula.simplification.expression));
             block.push('\n');
-            if show_process && !formula.steps.is_empty() {
+            if show_process && !formula.simplification.steps.is_empty() {
                 block.push('\n');
-                block.push_str(&render_process(&formula.original, &formula.steps));
+                block.push_str(&render_process(
+                    &formula.simplification.original,
+                    &formula.simplification.steps,
+                ));
             }
             block
         })
@@ -179,7 +193,10 @@ fn present(evaluation: &Evaluation, color: bool, show_process: bool) -> String {
         && let Some(simplification) = &evaluation.simplification
         && !simplification.steps.is_empty()
     {
-        output.push_str(&render_process(&simplification.original, &simplification.steps));
+        output.push_str(&render_process(
+            &simplification.original,
+            &simplification.steps,
+        ));
         output.push('\n');
     }
     output.push_str("Tabla de verdad:\n");

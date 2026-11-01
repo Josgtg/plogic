@@ -335,7 +335,7 @@ fn mostrar_proceso_in_file_mode_numbers_each_proposition_and_omits_empty_blocks(
     let stdout = text(&output.stdout);
     assert_eq!(
         stdout,
-        "Proposición 1:\n\n\
+        "Proposición 1: p -> q\n\n\
          Simplificada: q ∨ ¬p\n\n\
          Proceso:\n\
          0. Original: p → q\n\
@@ -347,7 +347,7 @@ fn mostrar_proceso_in_file_mode_numbers_each_proposition_and_omits_empty_blocks(
          V  F  | V\n\
          V  V  | V\n\n\
          Clasificación: Esta proposición es una contingencia.\n\n\
-         Proposición 2:\n\n\
+         Proposición 2: q & p\n\n\
          Simplificada: p ∧ q\n\n\
          Tabla de verdad:\n\
          p  q  | p ∧ q\n\
@@ -438,8 +438,8 @@ fn file_mode_numbers_each_proposition_and_separates_the_blocks() {
 
     assert_eq!(code(&output), Some(0));
     let stdout = text(&output.stdout);
-    assert!(stdout.starts_with("Proposición 1:\n\nSimplificada: p ∧ q\n\n"));
-    assert!(stdout.contains("Proposición 2:\n\nSimplificada: q ∨ r\n\n"));
+    assert!(stdout.starts_with("Proposición 1: p & q\n\nSimplificada: p ∧ q\n\n"));
+    assert!(stdout.contains("Proposición 2: q | r\n\nSimplificada: q ∨ r\n\n"));
     // One blank line between the two blocks.
     assert!(stdout.contains("Esta proposición es una contingencia.\n\nProposición 2:"));
     assert_eq!(stdout.matches("Proposición ").count(), 2);
@@ -458,10 +458,11 @@ fn simplificar_in_file_mode_numbers_each_formula() {
     assert_eq!(code(&output), Some(0));
     assert_eq!(
         text(&output.stdout),
-        "Proposición 1:\n\nSimplificada: p ∧ q\n\n\
-         Proposición 2:\n\nSimplificada: q ∨ r\n"
+        "Proposición 1: p & q\n\nSimplificada: p ∧ q\n\n\
+         Proposición 2: q | r\n\nSimplificada: q ∨ r\n"
     );
-    assert!(!text(&output.stdout).contains('|'));
+    assert!(!text(&output.stdout).contains("Tabla de verdad:"));
+    assert!(!text(&output.stdout).contains("Esta proposición"));
     assert!(output.stderr.is_empty());
 
     let _ = std::fs::remove_dir_all(&dir);
@@ -475,7 +476,7 @@ fn a_file_with_one_proposition_still_gets_a_heading() {
     let output = plogic(&dir, &["-a", "f.txt"]);
 
     assert_eq!(code(&output), Some(0));
-    assert!(text(&output.stdout).starts_with("Proposición 1:\n\nSimplificada: p\n\n"));
+    assert!(text(&output.stdout).starts_with("Proposición 1: p\n\nSimplificada: p\n\n"));
     assert!(output.stderr.is_empty());
 
     let _ = std::fs::remove_dir_all(&dir);
@@ -502,8 +503,8 @@ fn blank_lines_produce_no_table_and_do_not_advance_the_numbering() {
 
     assert_eq!(code(&output), Some(0));
     let stdout = text(&output.stdout);
-    assert!(stdout.contains("Proposición 1:\n\nSimplificada: p ∧ q"));
-    assert!(stdout.contains("Proposición 2:\n\nSimplificada: q ∨ r"));
+    assert!(stdout.contains("Proposición 1: p & q\n\nSimplificada: p ∧ q"));
+    assert!(stdout.contains("Proposición 2: q | r\n\nSimplificada: q ∨ r"));
     assert_eq!(stdout.matches("Proposición ").count(), 2);
     assert!(output.stderr.is_empty());
 
