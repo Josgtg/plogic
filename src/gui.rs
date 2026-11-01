@@ -5,11 +5,12 @@
 //! impure UI component: it drives the same [`Orchestrator`] as the CLI and
 //! builds its own components from the returned data. The pipeline stays pure.
 //!
-//! Layout: one centered column of fixed maximum width. From top to bottom it
-//! holds the header (title and collapsible help), the input section
-//! (formula, symbol toolbar, options and the `Evaluar` button) and the result
-//! section. The input section keeps its height; only the result section
-//! scrolls, so the controls never move when a result appears.
+//! Layout: one centered column of fixed maximum width in a single vertical
+//! scroll area. From top to bottom it holds the header (title and collapsible
+//! help), the input section (formula, symbol toolbar, options and the
+//! `Evaluar` button) and the result section. The result components flow in the
+//! main window instead of a separate result pane, so the whole window scrolls
+//! as one.
 
 use std::collections::HashSet;
 use std::ffi::OsString;
@@ -347,42 +348,37 @@ impl PlogicApp {
         }
     }
 
-    /// The result section. It fills the rest of the window and is the only
-    /// part that scrolls. The output is centered; each component is a small
-    /// label followed by its content. The previous result, including the
-    /// options it was evaluated with, stays until `Evaluar` replaces it.
+    /// The result section. Its components flow directly in the main window;
+    /// the output is centered; each component is a small label followed by its
+    /// content. The previous result, including the options it was evaluated
+    /// with, stays until `Evaluar` replaces it.
     fn result_section(&self, ui: &mut egui::Ui) {
         ui.vertical_centered(|ui| section_title(ui, "Resultado"));
         ui.add_space(LABEL_GAP);
 
-        egui::ScrollArea::vertical()
-            .id_salt("plogic-results")
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                ui.vertical_centered(|ui| match &self.outcome {
-                    None => {
+        ui.vertical_centered(|ui| match &self.outcome {
+            None => {
+                ui.add_space(SECTION_GAP);
+                ui.label(
+                    egui::RichText::new("El resultado aparecerá aquí.")
+                        .monospace()
+                        .size(12.0)
+                        .color(MUTED),
+                );
+            }
+            Some(Outcome::Errors(errors)) => errors_component(ui, errors),
+            Some(Outcome::Evaluations(view)) => {
+                for (index, assessment) in view.assessments.iter().enumerate() {
+                    if index > 0 {
                         ui.add_space(SECTION_GAP);
-                        ui.label(
-                            egui::RichText::new("El resultado aparecerá aquí.")
-                                .monospace()
-                                .size(12.0)
-                                .color(MUTED),
-                        );
-                    }
-                    Some(Outcome::Errors(errors)) => errors_component(ui, errors),
-                    Some(Outcome::Evaluations(view)) => {
-                        for (index, assessment) in view.assessments.iter().enumerate() {
-                            if index > 0 {
-                                ui.add_space(SECTION_GAP);
-                                ui.separator();
-                                ui.add_space(SECTION_GAP);
-                            }
-                            self.evaluation(ui, assessment, view.show_table, view.show_process);
-                        }
+                        ui.separator();
                         ui.add_space(SECTION_GAP);
                     }
-                });
-            });
+                    self.evaluation(ui, assessment, view.show_table, view.show_process);
+                }
+                ui.add_space(SECTION_GAP);
+            }
+        });
     }
 
     /// One assessment as its components: the formula, the optional process
@@ -455,18 +451,22 @@ impl eframe::App for PlogicApp {
                     .inner_margin(egui::Margin::symmetric(24, 20)),
             )
             .show(ui, |ui| {
-                // One centered column that keeps the full remaining height, so
-                // the result section can fill it and scroll by itself.
-                let area = ui.available_rect_before_wrap();
-                let width = area.width().min(MAX_WIDTH);
-                let left = area.center().x - width * 0.5;
-                let column = egui::Rect::from_min_max(
-                    egui::pos2(left, area.top()),
-                    egui::pos2(left + width, area.bottom()),
-                );
-                ui.scope_builder(egui::UiBuilder::new().max_rect(column), |ui| {
-                    self.contents(ui);
-                });
+                // One vertical scroll area for the whole window. Inside it,
+                // the content stays in a centered column of bounded width.
+                egui::ScrollArea::vertical()
+                    .id_salt("plogic-window")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        let width = ui.available_width().min(MAX_WIDTH);
+                        let side = ((ui.available_width() - width) * 0.5).max(0.0);
+                        ui.horizontal(|ui| {
+                            ui.add_space(side);
+                            ui.vertical(|ui| {
+                                ui.set_width(width);
+                                self.contents(ui);
+                            });
+                        });
+                    });
             });
     }
 }
