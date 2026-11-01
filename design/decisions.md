@@ -63,6 +63,7 @@ ADR-nnn`.
 | 049 | GUI modes are snapshotted; tables are only built below ten variables | Accepted |
 | 050 | The parser explains that `v` is not an operator in operator position | Accepted |
 | 051 | The GUI scrolls the whole window as one column | Accepted |
+| 052 | Reserved words get role-specific parser diagnostics | Accepted |
 
 ## ADR-001 — Functional, static style instead of the book's classes
 
@@ -1484,6 +1485,50 @@ not change; only `PlogicApp::ui` and `result_section` change. The GUI test plan
 drops the fixed-input assumption and keeps the state tests; the layout is
 checked by eye.
 
+## ADR-052 — Reserved words get role-specific parser diagnostics
+
+Status: Accepted
+
+Context: ADR-050 explains the `v` typo because a bare `v` is a valid variable
+name. The reserved spellings (`no`, `y`, `o`, `entonces`, `sisolosi`, `V`,
+`F`) fail differently: `y`, `o`, `entonces` and `sisolosi` are binary
+operators, `no` is the prefix negation, and `V` / `F` are values. When one of
+them lands in the wrong slot (`p no q`, `p & y`, `p V q`) or a binary word has
+no right operand (`p y`), the generic `se esperaba una expresión` or
+`se esperaba el fin de la proposición` does not explain the mistake. The
+token, however, keeps only its kind, so `y` and `&` are indistinguishable
+after scanning.
+
+Decision: `Token` gains a `reserved_word: bool` set by the scanner: true when
+the lexeme was one of the reserved word spellings, false for every symbol,
+identifier, literal digit and structural token. It is diagnostic metadata, not
+part of the language or the normalized display. The parser uses it in two
+places:
+
+- A reserved-word binary connective in operand position reports
+  `la conjunción ('&', '∧' u 'y') no puede usarse como variable` (and the
+  analogous sentence for disjunction, implication and biconditional).
+- A reserved-word connective missing its right operand reports its name and
+  spellings plus `necesita una expresión a su derecha`; `no` between two
+  propositions says it is the prefix negation, and `V` / `F` in operator
+  position say they are values, not operators.
+
+The message names every spelling of the kind, since the token no longer knows
+the exact one. Symbol spellings keep the current generic messages: `p &` and
+`p & & q` still say `se esperaba una expresión`, and `p ! q` still says
+`se esperaba el fin de la proposición`.
+
+Alternatives: add the full lexeme to `Token` (more data for the same result);
+put the flag in `TokenType` (would split every kind in two); always tailor the
+missing-operand message (would change the symbol-spelling messages and their
+tests); reject reserved words in the scanner (they are the language's words).
+
+Consequences: `Token` grows one `bool`, and every token constructor sets it;
+the scanner's `add_token` takes it as an argument. Scanner, parser and token
+tests cover the flag. `Expression` equality still compares only operator
+kinds, so the new field does not affect the AST. The normalized output is
+unchanged.
+
 ## Errata
 
 - ADR-001 lists `Orchestrator.evaluate(source, simplify)`; the signature gained
@@ -1557,3 +1602,6 @@ checked by eye.
   snapshot modes and the ten-variable table policy are unchanged.
 - ADR-003's spelling table is unchanged by ADR-050: `v` stays a variable name,
   and only the parser's operator-position message explains the mistyping.
+- ADR-010's reserved words remain impossible as identifiers; ADR-052 adds a
+  `reserved_word` diagnostic flag to `Token` without changing the vocabulary
+  or the normalized display.

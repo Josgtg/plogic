@@ -59,6 +59,7 @@ class Token {
   +kind: TokenType
   +line: int
   +col: int
+  +reserved_word: bool
   --
   +to_string(): str
 }

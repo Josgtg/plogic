@@ -26,6 +26,7 @@ class Token {
   +kind: TokenType
   +line: int
   +col: int
+  +reserved_word: bool
   --
   +to_string(): str
 }
@@ -119,6 +120,14 @@ note bottom of Parser
   operator_error explains that it is not a disjunction and
   lists `|`, `∨` and `o` (ADR-050). `v` in operand
   position stays a legal variable.
+
+  Reserved words get role-specific messages only when
+  Token.reserved_word is true: a binary word in operand
+  position cannot be a variable, a word connective with no
+  right operand says what is missing, `no` between
+  propositions says it is prefix negation, and `V` / `F` in
+  operator position say they are values. Symbol spellings
+  keep the generic messages (ADR-052).
 end note
 
 Orchestrator ..> Parser

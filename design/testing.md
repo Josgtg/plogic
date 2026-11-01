@@ -80,6 +80,28 @@ covers the GUI's state and pure helpers; the rendered window is checked by eye.
   generic `se esperaba ')' después de la expresión`. `p q` keeps
   `se esperaba el fin de la proposición`, and `p & v` parses normally with `v`
   as a variable (ADR-050).
+- Reserved words: word spellings get their own messages (ADR-052).
+  - Operator slot: `p no q` and `p no` report
+    `la negación ('!', '¬' u 'no') va antes de la expresión, no entre dos
+    proposiciones` at the `no`; `p V q` reports `el valor verdadero 'V' no es
+    un operador; para la disyunción usa '|', '∨' u 'o'`; `p F q` reports
+    `el valor falso 'F' no es un operador; se escribe como operando`.
+  - Operand slot: `p & y`, `p & o`, `p & entonces`, `p & sisolosi` report
+    `la conjunción ('&', '∧' u 'y')` / `la disyunción ('|', '∨' u 'o')` /
+    `la implicación ('->', '→' u 'entonces')` /
+    `el bicondicional ('<->', '↔' u 'sisolosi') no puede usarse como variable`
+    at the word.
+  - Missing right operand: `p y`, `p o`, `p entonces`, `p sisolosi` report the
+    same connective phrase plus `necesita una expresión a su derecha` at the
+    end position; `no` and `p & no` report the negation phrase plus the same
+    suffix.
+  - Symbol spellings keep the generic messages: `p &` and `p & & q` still
+    report `se esperaba una expresión`, and `p ! q` still reports
+    `se esperaba el fin de la proposición`. `p 1 q` (digit literal) is also
+    generic; only `V` / `F` are reserved words.
+  - A reserved word in operand position is rejected, but `p y q`,
+    `p o q`, `p entonces q`, `p sisolosi q`, `p & V` and `p & F` parse
+    normally.
 
 ## 3. Simplifier
 

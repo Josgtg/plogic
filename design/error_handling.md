@@ -51,8 +51,27 @@ is a thin wrapper over `error.to_string()` (ADR-037).
 | Stage | Example messages |
 | --- | --- |
 | Scanner | `carácter inválido '%'`, `literal inválido '12'`, `se esperaba '>' después de '-'`, `se esperaba '->' después de '<'` |
-| Parser | `se esperaba una expresión`, `se esperaba ')' después de la expresión`, `se esperaba el fin de la proposición`, `'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción` |
+| Parser | `se esperaba una expresión`, `se esperaba ')' después de la expresión`, `se esperaba el fin de la proposición`, `'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción`, plus the reserved-word diagnostics below |
 | Interpreter | `resultado muy largo: más de 4096 filas` |
+
+Reserved-word diagnostics (ADR-052) replace the generic parser message only
+when the token was spelled as a word:
+
+| Source | Error |
+| --- | --- |
+| `p no q` | `la negación ('!', '¬' u 'no') va antes de la expresión, no entre dos proposiciones` |
+| `no` | `la negación ('!', '¬' u 'no') necesita una expresión a su derecha` |
+| `p V q` | `el valor verdadero 'V' no es un operador; para la disyunción usa '\|', '∨' u 'o'` |
+| `p F q` | `el valor falso 'F' no es un operador; se escribe como operando` |
+| `p y` | `la conjunción ('&', '∧' u 'y') necesita una expresión a su derecha` |
+| `p & y` | `la conjunción ('&', '∧' u 'y') no puede usarse como variable` |
+| `p o` | `la disyunción ('\|', '∨' u 'o') necesita una expresión a su derecha` |
+| `p & o` | `la disyunción ('\|', '∨' u 'o') no puede usarse como variable` |
+| `p entonces` | `la implicación ('->', '→' u 'entonces') necesita una expresión a su derecha` |
+| `p & entonces` | `la implicación ('->', '→' u 'entonces') no puede usarse como variable` |
+| `p sisolosi` | `el bicondicional ('<->', '↔' u 'sisolosi') necesita una expresión a su derecha` |
+| `p & sisolosi` | `el bicondicional ('<->', '↔' u 'sisolosi') no puede usarse como variable` |
+| `p &`, `p & & q` | `se esperaba una expresión` (symbol spellings keep the generic message) |
 
 `Simplifier.simplify` and `TruthTable` cannot fail at all. The only error
 after parsing is the Interpreter's size limit: a truth table of more than
@@ -114,3 +133,7 @@ and exits non-zero (see ui.md).
 | `p q` | `línea 1, columna 3: se esperaba el fin de la proposición` |
 | `p v q` | `línea 1, columna 3: 'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción` |
 | `(p v q)` | `línea 1, columna 4: 'v' no es un operador; usa '\|', '∨' u 'o' para la disyunción` |
+| `p no q` | `línea 1, columna 3: la negación ('!', '¬' u 'no') va antes de la expresión, no entre dos proposiciones` |
+| `p & y` | `línea 1, columna 5: la conjunción ('&', '∧' u 'y') no puede usarse como variable` |
+| `p y` | `línea 1, columna 4: la conjunción ('&', '∧' u 'y') necesita una expresión a su derecha` |
+| `p V q` | `línea 1, columna 3: el valor verdadero 'V' no es un operador; para la disyunción usa '\|', '∨' u 'o'` |

@@ -108,3 +108,14 @@ expression, or a `v` before a required `)` — the parser replaces the generic
 message with `'v' no es un operador; usa '|', '∨' u 'o' para la disyunción`
 (ADR-050). Any other leftover token keeps the message that says what was
 expected, and `v` in operand position (`p & v`) stays a legal variable.
+
+Reserved words get their own diagnostics, but only when the source spelled
+them as words: the token's `reserved_word` flag distinguishes `y` from `&`
+(ADR-052). A binary connective in operand position says it cannot be a
+variable (`la conjunción ('&', '∧' u 'y') no puede usarse como variable`); a
+reserved-word connective with no right operand says what is missing
+(`la conjunción ('&', '∧' u 'y') necesita una expresión a su derecha`); `no`
+between two propositions says it is the prefix negation; and a `V` / `F` in
+operator position says it is a value, not an operator. The same mistakes with
+a symbol spelling (`p &`, `p & & q`, `p ! q`) keep `se esperaba una expresión`
+or the generic leftover message.

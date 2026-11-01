@@ -26,6 +26,7 @@ class Token {
   +kind: TokenType
   +line: int
   +col: int
+  +reserved_word: bool
   --
   +to_string(): str
 }
@@ -73,7 +74,8 @@ note bottom of Scanner
   - digit runs map to Literal(false) / Literal(true),
     any other run is a ScanError;
   - ASCII letter runs are words: reserved spellings
-    map to their kind, anything else is Identifier.
+    map to their kind and set reserved_word, anything
+    else is Identifier with reserved_word false.
 
   line and col are 1-based; col counts characters from
   the last line break, including a tab as one, and is

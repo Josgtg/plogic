@@ -8,8 +8,8 @@ structural tokens.
 
 ## Token
 
-A token is `Token { kind: TokenType, line: int, col: int }` with a
-`to_string()` method (`Display` in Rust):
+A token is `Token { kind: TokenType, line: int, col: int, reserved_word: bool }`
+with a `to_string()` method (`Display` in Rust):
 
 - `kind` is the kind, including its payload (see below). The field is called
   `kind` because `type` is a Rust keyword.
@@ -17,6 +17,11 @@ A token is `Token { kind: TokenType, line: int, col: int }` with a
   every later stage.
 - `line` and `col` are 1-based and point at the first character of the
   token (for `Eof`, the position just past the end of the source).
+- `reserved_word` is true only when the source spelled the token with a
+  reserved word (`no`, `y`, `o`, `entonces`, `sisolosi`, `V`, `F`) rather than
+  a symbol. The scanner sets it and the parser uses it for its reserved-word
+  diagnostics (ADR-052). It carries no language meaning: the token's kind and
+  position are what every later stage reads.
 - `to_string()` renders the token's display spelling — the normalized
   symbols `¬`, `∧`, `∨`, `→`, `↔`, the literals `V` / `F`, the parentheses
   `(` / `)`, or the identifier's name. It is used by `ASTPrinter`,
@@ -25,9 +30,10 @@ A token is `Token { kind: TokenType, line: int, col: int }` with a
   no spelling and render as the empty string (ADR-036).
 
 The token does not keep the source spelling of a connective or a literal;
-identifiers keep their name. A proposition is displayed in one normalized
-form (see truth_table.md), so how the user spelled a kind (`y`, `entonces`,
-`0`, `->`) never reaches the output.
+identifiers keep their name. `reserved_word` is only a diagnostic flag, not
+the spelling. A proposition is displayed in one normalized form (see
+truth_table.md), so how the user spelled a kind (`y`, `entonces`, `0`, `->`)
+never reaches the output.
 
 ## TokenType
 

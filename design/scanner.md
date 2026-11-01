@@ -43,7 +43,9 @@ For each character or lexeme at the current position:
   `entonces`, `sisolosi`, `V`, `F`) to their kind; an unknown word becomes
   `Identifier(lexeme)`. Any other character — `ñ`, `ä`, `_` — never starts a
   word, so it is a `ScanError`. An underscore is only ever read as part of a
-  word: `p_1` is an identifier, `_` alone is `carácter inválido '_'`.
+  word: `p_1` is an identifier, `_` alone is `carácter inválido '_'`. A word
+  that maps to a kind is emitted with `reserved_word = true`; every symbol
+  spelling emits `reserved_word = false` (ADR-052).
 - Any other character is a `ScanError`: `carácter inválido '%'`.
 
 Since every spelling goes through `TokenType.map`, spellings can be mixed
